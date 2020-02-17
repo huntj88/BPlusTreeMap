@@ -9,7 +9,7 @@ interface Node<Key : Comparable<Key>, Value> {
     fun put(entry: Entry<Key, Value>): PutResponse<Key, Value>
 }
 
-// get around "cannot use reified type" if i did "Array<Key?>"
+// work around "cannot use reified type" if i did "Array<Key?>"
 data class Box<T: Comparable<T>>(val key: T) : Comparable<Box<T>> {
     override fun compareTo(other: Box<T>): Int {
         return key.compareTo(other.key)

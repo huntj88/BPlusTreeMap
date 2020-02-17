@@ -97,23 +97,22 @@ class BPlusTreeMapTest {
 
     @Test
     fun getAllTest() {
-        val range = (1..60000)
+        val testData = (1..60000).toList()
         val random = Random(1)
 
-        BPlusTreeMap<Int, Int>().apply {
-            val nums = range.sortedBy { random.nextDouble() }
+        val tree = BPlusTreeMap<Int, Int>()
 
-            nums.forEach { put(it, it) }
+        testData
+            .sortedBy { random.nextDouble() }
+            .forEach { tree.put(it, it) }
 
-            range.forEach {
-                get(it) ?: throw IllegalStateException()
-            }
-
-            val range1 = getRange(1, 60000)
-            assertEquals(range1.size, 60000)
-
-            println(this)
+        testData.forEach {
+            tree.get(it) ?: throw IllegalStateException()
         }
+
+        val fullRange = tree.getRange(1, 60000)
+        assertEquals(fullRange.size, 60000)
+
     }
 
     companion object {
