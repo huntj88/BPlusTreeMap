@@ -15,22 +15,10 @@ class Tree<Key: Comparable<Key>, Value> {
     fun put(key: Key, value: Value) {
         val putResponse = rootNode.put(Entry(key, value))
         if(putResponse is PutResponse.NodeFull<Key, Value>) {
-            when(rootNode) {
-                is LeafNode<Key, Value> -> {
-                    rootNode = InternalNode<Key, Value>().also {
-                        it.keys[0] = putResponse.promoted
-                        it.children[0] = putResponse.left
-                        it.children[1] = putResponse.right
-                    }
-                }
-                is InternalNode<Key, Value> -> {
-                    rootNode = InternalNode<Key, Value>().also {
-                        it.keys[0] = putResponse.promoted
-                        it.children[0] = putResponse.left
-                        it.children[1] = putResponse.right
-                    }
-                }
-                else -> TODO()
+            rootNode = InternalNode<Key, Value>().also {
+                it.keys[0] = putResponse.promoted
+                it.children[0] = putResponse.left
+                it.children[1] = putResponse.right
             }
         }
     }
