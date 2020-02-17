@@ -67,6 +67,10 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
 
         left.rightLink = right
 
+        // reconnect existing nodes
+        leftLink?.rightLink = left
+        rightLink?.leftLink = right
+
         return PutResponse.NodeFull(Box(right.entries.first()!!.key), left, right)
     }
 

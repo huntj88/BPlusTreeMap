@@ -2,6 +2,7 @@ package me.jameshunt.bplustree
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import kotlin.random.Random
 
 class TreeTest {
 
@@ -17,9 +18,7 @@ class TreeTest {
         tree.put(5, 5)
         tree.put(6, 6)
         tree.put(7, 7)
-        println(tree.get(3))
-
-        tree.getRange(1, 15).map { it.key }.also(::println).firstOrNull { it == 7 } ?: throw IllegalStateException()
+        println(tree.get(6))
     }
 
     @Test
@@ -93,5 +92,25 @@ class TreeTest {
             listOf(1, 2, 3, 4, 5, 6),
             tree.getRange(0, 6).map { it.key }
         )
+    }
+
+    @Test
+    fun getAllTest() {
+        val range = (1..60000)
+        val random = Random(1)
+
+        Tree<Int, Int>().apply {
+            val nums = range.sortedBy { random.nextDouble() }
+
+            nums.forEach { put(it, it) }
+
+            range.forEach {
+                get(it) ?: throw IllegalStateException()
+            }
+
+            assertEquals(getRange(4000, 5000).size, 1001)
+
+            println(this)
+        }
     }
 }

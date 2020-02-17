@@ -25,4 +25,4 @@ sealed class PutResponse<out Key, out Value> {
     ) : PutResponse<Key, Value>()
 }
 
-const val numEntriesPerNode = 4
+const val numEntriesPerNode = 8

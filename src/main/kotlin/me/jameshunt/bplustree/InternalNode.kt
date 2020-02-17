@@ -1,6 +1,6 @@
 package me.jameshunt.bplustree
 
-import me.jameshunt.bplustree.Tree.*
+import me.jameshunt.bplustree.Tree.Entry
 
 class InternalNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
 
@@ -22,7 +22,7 @@ class InternalNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
         val possibleLocationIndex = childIndexLocationOfKey(entry.key)
         val node = children[possibleLocationIndex]!!
 
-        return when(val putResponse = node.put(entry)) {
+        return when (val putResponse = node.put(entry)) {
             is PutResponse.Success -> putResponse
             is PutResponse.NodeFull<Key, Value> -> insertPromoted(putResponse)
         }
