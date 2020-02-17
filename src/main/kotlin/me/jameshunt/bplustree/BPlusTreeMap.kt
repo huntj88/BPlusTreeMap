@@ -1,6 +1,6 @@
 package me.jameshunt.bplustree
 
-class Tree<Key: Comparable<Key>, Value> {
+class BPlusTreeMap<Key: Comparable<Key>, Value> {
 
     var rootNode: Node<Key, Value> = LeafNode()
 

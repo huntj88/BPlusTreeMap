@@ -5,11 +5,11 @@ import org.junit.BeforeClass
 import org.junit.Test
 import kotlin.random.Random
 
-class TreeTest {
+class BPlusTreeMapTest {
 
     @Test
     fun test() {
-        val tree = Tree<Int, Int>()
+        val tree = BPlusTreeMap<Int, Int>()
         tree.put(1, 1)
         tree.put(2, 2)
         println(tree.get(1))
@@ -24,7 +24,7 @@ class TreeTest {
 
     @Test
     fun moreSplittingOfNodes() {
-        val tree = Tree<Int, Int>()
+        val tree = BPlusTreeMap<Int, Int>()
         tree.put(1, 1)
         tree.put(2, 2)
 //        println(tree.get(1))
@@ -58,7 +58,7 @@ class TreeTest {
 
     @Test
     fun testGetRange() {
-        val tree = Tree<Int, Int>()
+        val tree = BPlusTreeMap<Int, Int>()
         tree.put(1, 1)
         tree.put(2, 2)
         tree.put(3, 3)
@@ -100,7 +100,7 @@ class TreeTest {
         val range = (1..60000)
         val random = Random(1)
 
-        Tree<Int, Int>().apply {
+        BPlusTreeMap<Int, Int>().apply {
             val nums = range.sortedBy { random.nextDouble() }
 
             nums.forEach { put(it, it) }
@@ -117,13 +117,13 @@ class TreeTest {
     }
 
     companion object {
-        lateinit var bTree: Tree<Int, Int>
+        lateinit var bTree: BPlusTreeMap<Int, Int>
 
         @BeforeClass
         @JvmStatic
         fun setup() {
             val random = Random(1)
-            bTree = Tree<Int, Int>().apply {
+            bTree = BPlusTreeMap<Int, Int>().apply {
                 (0..1_000_000).sortedBy { random.nextInt() }.forEach { put(it, it * 2) }
             }
         }

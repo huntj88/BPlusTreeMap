@@ -1,6 +1,6 @@
 package me.jameshunt.bplustree
 
-import me.jameshunt.bplustree.Tree.Entry
+import me.jameshunt.bplustree.BPlusTreeMap.Entry
 
 interface Node<Key : Comparable<Key>, Value> {
     fun get(key: Key): Value?

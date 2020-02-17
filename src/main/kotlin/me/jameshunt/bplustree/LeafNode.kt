@@ -1,6 +1,6 @@
 package me.jameshunt.bplustree
 
-import me.jameshunt.bplustree.Tree.*
+import me.jameshunt.bplustree.BPlusTreeMap.*
 
 class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
     private val entries: Array<Entry<Key, Value>?> = Array(numEntriesPerNode) { null }

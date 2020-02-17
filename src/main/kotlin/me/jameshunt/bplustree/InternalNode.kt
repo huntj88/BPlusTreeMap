@@ -1,6 +1,6 @@
 package me.jameshunt.bplustree
 
-import me.jameshunt.bplustree.Tree.Entry
+import me.jameshunt.bplustree.BPlusTreeMap.Entry
 
 class InternalNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
 
