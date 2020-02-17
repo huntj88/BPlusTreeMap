@@ -97,7 +97,7 @@ class BPlusTreeMapTest {
 
     @Test
     fun getAllTest() {
-        val testData = (1..60000).toList()
+        val testData = (0 until 60000).toList()
         val random = Random(1)
 
         val tree = BPlusTreeMap<Int, Int>()
@@ -110,9 +110,9 @@ class BPlusTreeMapTest {
             tree.get(it) ?: throw IllegalStateException()
         }
 
-        val fullRange = tree.getRange(1, 60000)
+        val fullRange = tree.getRange(start = 0, endInclusive = 59999)
         assertEquals(fullRange.size, 60000)
-
+        assertEquals(2000, fullRange[2000].value)
     }
 
     companion object {
