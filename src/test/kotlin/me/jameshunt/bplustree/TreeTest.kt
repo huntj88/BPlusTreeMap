@@ -1,6 +1,7 @@
 package me.jameshunt.bplustree
 
 import org.junit.Assert.assertEquals
+import org.junit.BeforeClass
 import org.junit.Test
 import kotlin.random.Random
 
@@ -108,9 +109,39 @@ class TreeTest {
                 get(it) ?: throw IllegalStateException()
             }
 
-            assertEquals(getRange(4000, 5000).size, 1001)
+            val range1 = getRange(1, 60000)
+            assertEquals(range1.size, 60000)
 
             println(this)
+        }
+    }
+
+    companion object {
+        lateinit var bTree: Tree<Int, Int>
+
+        @BeforeClass
+        @JvmStatic
+        fun setup() {
+            val random = Random(1)
+            bTree = Tree<Int, Int>().apply {
+                (0..1_000_000).sortedBy { random.nextInt() }.forEach { put(it, it * 2) }
+            }
+        }
+    }
+
+    @Test
+    fun test1Million() {
+        bTree.get(4343) ?: throw IllegalStateException()
+        bTree.get(234233) ?: throw IllegalStateException()
+        bTree.get(577432) ?: throw IllegalStateException()
+        bTree.get(468743) ?: throw IllegalStateException()
+        bTree.get(936743) ?: throw IllegalStateException()
+        bTree.get(1_000_001)?.let { throw IllegalStateException("should be null") }
+
+        val range = bTree.getRange(10000, 10500)
+        println(range.take(200))
+        if (501 != range.size) {
+            throw IllegalStateException()
         }
     }
 }

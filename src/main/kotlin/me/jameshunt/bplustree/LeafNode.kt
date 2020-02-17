@@ -24,16 +24,20 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
     }
 
     private fun getRangeAscending(collector: MutableList<Entry<Key, Value>>, start: Key, endInclusive: Key) {
-        entries.forEach { entry ->
-            entry?.let {
-                when(entry.key in start..endInclusive) {
-                    true -> collector.add(entry)
-                    false -> if(collector.isEmpty()) Unit else return
+        var next = this as LeafNode<Key, Value>?
+
+        while(next != null) {
+            next.entries.forEach { entry ->
+                entry?.let {
+                    when (entry.key in start..endInclusive) {
+                        true -> collector.add(entry)
+                        false -> if (collector.isEmpty()) Unit else return
+                    }
                 }
             }
-        }
 
-        rightLink?.getRangeAscending(collector, start, endInclusive)
+            next = next.rightLink
+        }
     }
 
     override fun put(entry: Entry<Key, Value>): PutResponse<Key, Value> {
