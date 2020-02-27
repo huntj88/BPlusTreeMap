@@ -1,20 +1,28 @@
 package me.jameshunt.bplustree
 
 import me.jameshunt.bplustree.BPlusTreeMap.*
+import java.util.concurrent.locks.ReentrantReadWriteLock
+import kotlin.concurrent.withLock
 
 class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
+    private val rwLock = ReentrantReadWriteLock()
+    override val readLock: ReentrantReadWriteLock.ReadLock = rwLock.readLock()
+    override val writeLock: ReentrantReadWriteLock.WriteLock = rwLock.writeLock()
+
     private val entries: Array<Entry<Key, Value>?> = Array(numEntriesPerNode) { null }
     private var leftLink: LeafNode<Key, Value>? = null
     private var rightLink: LeafNode<Key, Value>? = null
 
     override fun get(key: Key): Value? {
-        // TODO: could be binary search, already sorted
-        entries.forEach {
-            if (key == it?.key) {
-                return it.value
+        readLock.withLock {
+            // TODO: could be binary search, already sorted
+            entries.forEach {
+                if (key == it?.key) {
+                    return it.value
+                }
             }
+            return null
         }
-        return null
     }
 
     override fun getRange(start: Key, endInclusive: Key): List<Entry<Key, Value>> {
@@ -27,6 +35,7 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
         var next = this as LeafNode<Key, Value>?
 
         while(next != null) {
+            next.readLock.lock()
             next.entries.forEach { entry ->
                 entry?.let {
                     when (entry.key in start..endInclusive) {
@@ -35,15 +44,26 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
                     }
                 }
             }
-
-            next = next.rightLink
+            val nextRightLink = next.rightLink
+            next.readLock.unlock()
+            next = nextRightLink
         }
     }
 
-    override fun put(entry: Entry<Key, Value>): PutResponse<Key, Value> {
+    override fun put(entry: Entry<Key, Value>, releaseAncestors: () -> Unit): PutResponse<Key, Value> {
         return when (entries.last() == null) {
-            true -> putInNodeWithEmptySpace(entry)
-            false -> splitLeaf(entry)
+            true -> {
+                releaseAncestors()
+                putInNodeWithEmptySpace(entry)
+            }
+            false -> {
+                leftLink?.writeLock?.lock()
+                rightLink?.writeLock?.lock()
+                splitLeaf(entry).also {
+                    leftLink?.writeLock?.unlock()
+                    rightLink?.writeLock?.unlock()
+                }
+            }
         }
     }
 
