@@ -3,6 +3,9 @@ package me.jameshunt.bplustree
 import org.junit.Assert.assertEquals
 import org.junit.BeforeClass
 import org.junit.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import kotlin.concurrent.thread
 import kotlin.random.Random
 
 class BPlusTreeMapTest {
@@ -141,6 +144,46 @@ class BPlusTreeMapTest {
         println(range.take(200))
         if (501 != range.size) {
             throw IllegalStateException()
+        }
+    }
+
+    @Test
+    fun testConcurrentWrite() {
+
+        val tree = BPlusTreeMap<Int, Int>()
+        val latch = CountDownLatch(8)
+
+        val one = (0..1000 step 8)
+        val two = (1..1000 step 8)
+        val three = (2..1000 step 8)
+        val four = (3..1000 step 8)
+        val five = (4..1000 step 8)
+        val six = (5..1000 step 8)
+        val seven = (6..1000 step 8)
+        val eight = (7..1000 step 8)
+
+        fun IntProgression.insertInOtherThread() = thread {
+            this.forEach {
+                println("inserting: $it")
+                tree.put(it, it)
+            }
+            latch.countDown()
+        }
+
+        one.insertInOtherThread()
+        two.insertInOtherThread()
+        three.insertInOtherThread()
+        four.insertInOtherThread()
+        five.insertInOtherThread()
+        six.insertInOtherThread()
+        seven.insertInOtherThread()
+        eight.insertInOtherThread()
+
+        latch.await(1, TimeUnit.SECONDS)
+
+        assertEquals((0..500).toList(), tree.getRange(0, 500).map { it.value })
+        (0..1000).forEach {
+            tree.get(it) ?: throw IllegalStateException()
         }
     }
 }

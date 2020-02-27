@@ -1,6 +1,6 @@
 package me.jameshunt.bplustree
 
-class BPlusTreeMap<Key: Comparable<Key>, Value> {
+class BPlusTreeMap<Key : Comparable<Key>, Value> {
 
     var rootNode: Node<Key, Value> = LeafNode()
 
@@ -13,12 +13,16 @@ class BPlusTreeMap<Key: Comparable<Key>, Value> {
     }
 
     fun put(key: Key, value: Value) {
-        val putResponse = rootNode.put(Entry(key, value))
-        if(putResponse is PutResponse.NodeFull<Key, Value>) {
-            rootNode = InternalNode<Key, Value>().also {
-                it.keys[0] = putResponse.promoted
-                it.children[0] = putResponse.left
-                it.children[1] = putResponse.right
+        rootNode.writeLock.lock()
+        val releaseRootNode = { rootNode.writeLock.release() }
+        when (val putResponse = rootNode.put(Entry(key, value), releaseAncestors = releaseRootNode)) {
+            is PutResponse.Success -> releaseRootNode()
+            is PutResponse.NodeFull<Key, Value> -> {
+                rootNode = InternalNode<Key, Value>().also {
+                    it.keys[0] = putResponse.promoted
+                    it.children[0] = putResponse.left
+                    it.children[1] = putResponse.right
+                }
             }
         }
     }
