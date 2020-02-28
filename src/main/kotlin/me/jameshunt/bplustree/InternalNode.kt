@@ -1,12 +1,9 @@
 package me.jameshunt.bplustree
 
 import me.jameshunt.bplustree.BPlusTreeMap.Entry
-import java.util.concurrent.locks.ReentrantReadWriteLock
 
 class InternalNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
-    private val rwLock = ReentrantReadWriteLock()
-    override val readLock: ReentrantReadWriteLock.ReadLock = rwLock.readLock()
-    override val writeLock: ReentrantReadWriteLock.WriteLock = rwLock.writeLock()
+    override val rwLock: ReadWriteLock = ReadWriteLock()
 
     val keys: Array<Box<Key>?> = Array(numEntriesPerNode) { null }
     val children: Array<Node<Key, Value>?> = Array(numEntriesPerNode + 1) { null }
@@ -26,21 +23,28 @@ class InternalNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
         val possibleLocationIndex = childIndexLocationOfKey(entry.key)
         val childNode = children[possibleLocationIndex]!!
 
-        childNode.writeLock.lock()
+        childNode.rwLock.lockWrite()
 
-        if (keys.last() == null) {
+        val ancestorsReleased = keys.last() == null
+        if (ancestorsReleased) {
             // will not split node, so safe to release ancestor lock
             releaseAncestors()
         }
 
         val releaseThisNodeAndAncestors: () -> Unit = {
-            writeLock.release()
-            releaseAncestors()
+            rwLock.unlockWrite()
+            if(!ancestorsReleased) {
+                releaseAncestors()
+            }
         }
 
         return when (val putResponse = childNode.put(entry, releaseThisNodeAndAncestors)) {
-            is PutResponse.Success -> putResponse.also { childNode.writeLock.release() }
-            is PutResponse.NodeFull<Key, Value> -> insertPromoted(putResponse)
+            is PutResponse.Success -> putResponse
+            is PutResponse.NodeFull<Key, Value> -> insertPromoted(putResponse).also {
+                if(it is PutResponse.Success) {
+                    releaseThisNodeAndAncestors()
+                }
+            }
         }
     }
 
