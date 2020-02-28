@@ -4,8 +4,7 @@ import me.jameshunt.bplustree.BPlusTreeMap.Entry
 import java.util.concurrent.locks.ReentrantReadWriteLock
 
 interface Node<Key : Comparable<Key>, Value> {
-    val readLock: ReentrantReadWriteLock.ReadLock
-    val writeLock: ReentrantReadWriteLock.WriteLock
+    val rwLock: ReadWriteLock
 
     fun get(key: Key): Value?
     fun getRange(start: Key, endInclusive: Key): List<Entry<Key, Value>>

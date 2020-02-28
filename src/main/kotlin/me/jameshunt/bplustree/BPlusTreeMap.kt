@@ -13,16 +13,14 @@ class BPlusTreeMap<Key : Comparable<Key>, Value> {
     }
 
     fun put(key: Key, value: Value) {
-        rootNode.writeLock.lock()
-        val releaseRootNode = { rootNode.writeLock.release() }
-        when (val putResponse = rootNode.put(Entry(key, value), releaseAncestors = releaseRootNode)) {
-            is PutResponse.Success -> releaseRootNode()
-            is PutResponse.NodeFull<Key, Value> -> {
-                rootNode = InternalNode<Key, Value>().also {
-                    it.keys[0] = putResponse.promoted
-                    it.children[0] = putResponse.left
-                    it.children[1] = putResponse.right
-                }
+        rootNode.rwLock.lockWrite()
+
+        val putResponse = rootNode.put(Entry(key, value), releaseAncestors = {})
+        if(putResponse is PutResponse.NodeFull<Key, Value>) {
+            rootNode = InternalNode<Key, Value>().also {
+                it.keys[0] = putResponse.promoted
+                it.children[0] = putResponse.left
+                it.children[1] = putResponse.right
             }
         }
     }

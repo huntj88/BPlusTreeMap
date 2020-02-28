@@ -1,27 +1,23 @@
 package me.jameshunt.bplustree
 
 import me.jameshunt.bplustree.BPlusTreeMap.*
-import java.util.concurrent.locks.ReentrantReadWriteLock
-import kotlin.concurrent.withLock
 
 class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
-    private val rwLock = ReentrantReadWriteLock()
-    override val readLock: ReentrantReadWriteLock.ReadLock = rwLock.readLock()
-    override val writeLock: ReentrantReadWriteLock.WriteLock = rwLock.writeLock()
+    override val rwLock: ReadWriteLock = ReadWriteLock()
 
     private val entries: Array<Entry<Key, Value>?> = Array(numEntriesPerNode) { null }
     private var leftLink: LeafNode<Key, Value>? = null
     private var rightLink: LeafNode<Key, Value>? = null
 
     override fun get(key: Key): Value? {
-        readLock.withLock {
+        return rwLock.withReadLock {
             // TODO: could be binary search, already sorted
             entries.forEach {
                 if (key == it?.key) {
-                    return it.value
+                    return@withReadLock it.value
                 }
             }
-            return null
+            return@withReadLock null
         }
     }
 
@@ -35,7 +31,7 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
         var next = this as LeafNode<Key, Value>?
 
         while(next != null) {
-            next.readLock.lock()
+            next.rwLock.lockRead()
             next.entries.forEach { entry ->
                 entry?.let {
                     when (entry.key in start..endInclusive) {
@@ -45,7 +41,7 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
                 }
             }
             val nextRightLink = next.rightLink
-            next.readLock.unlock()
+            next.rwLock.unlockRead()
             next = nextRightLink
         }
     }
@@ -54,14 +50,16 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
         return when (entries.last() == null) {
             true -> {
                 releaseAncestors()
-                putInNodeWithEmptySpace(entry)
+                putInNodeWithEmptySpace(entry).also {
+                    rwLock.unlockWrite()
+                }
             }
             false -> {
-                leftLink?.writeLock?.lock()
-                rightLink?.writeLock?.lock()
+                leftLink?.rwLock?.lockWrite()
+                rightLink?.rwLock?.lockWrite()
                 splitLeaf(entry).also {
-                    leftLink?.writeLock?.unlock()
-                    rightLink?.writeLock?.unlock()
+                    leftLink?.rwLock?.unlockWrite()
+                    rightLink?.rwLock?.unlockWrite()
                 }
             }
         }
