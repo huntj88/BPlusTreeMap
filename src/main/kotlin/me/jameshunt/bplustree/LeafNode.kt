@@ -9,8 +9,10 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
     private var leftLink: LeafNode<Key, Value>? = null
     private var rightLink: LeafNode<Key, Value>? = null
 
-    override fun get(key: Key): Value? {
+    override fun get(key: Key, releaseAncestor: () -> Unit): Value? {
         return rwLock.withReadLock {
+            releaseAncestor()
+
             // TODO: could be binary search, already sorted
             entries.forEach {
                 if (key == it?.key) {
@@ -21,17 +23,28 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
         }
     }
 
-    override fun getRange(start: Key, endInclusive: Key): List<Entry<Key, Value>> {
+    override fun getRange(start: Key, endInclusive: Key, releaseAncestor: () -> Unit): List<Entry<Key, Value>> {
         return mutableListOf<Entry<Key,Value>>().apply {
-            getRangeAscending(collector = this, start = start, endInclusive = endInclusive)
+            getRangeAscending(
+                collector = this,
+                start = start,
+                endInclusive = endInclusive,
+                releaseAncestor = releaseAncestor
+            )
         }
     }
 
-    private fun getRangeAscending(collector: MutableList<Entry<Key, Value>>, start: Key, endInclusive: Key) {
+    private fun getRangeAscending(
+        collector: MutableList<Entry<Key, Value>>,
+        start: Key,
+        endInclusive: Key,
+        releaseAncestor: () -> Unit
+    ) {
         var next = this as LeafNode<Key, Value>?
+        next!!.rwLock.lockRead()
+        releaseAncestor()
 
         while(next != null) {
-            next.rwLock.lockRead()
             next.entries.forEach { entry ->
                 entry?.let {
                     when (entry.key in start..endInclusive) {
@@ -40,7 +53,7 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
                     }
                 }
             }
-            val nextRightLink = next.rightLink
+            val nextRightLink = next.rightLink?.also { it.rwLock.lockRead() }
             next.rwLock.unlockRead()
             next = nextRightLink
         }

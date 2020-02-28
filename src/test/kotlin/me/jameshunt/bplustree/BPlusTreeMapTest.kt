@@ -148,42 +148,75 @@ class BPlusTreeMapTest {
     }
 
     @Test
+    fun insert1Million() {
+        val random = Random(1)
+        BPlusTreeMap<Int, Int>().apply {
+            (0..1_000_000).forEach {
+                put(it, it * 2)
+                get(it) ?: throw IllegalStateException()
+            }
+        }
+    }
+
+    @Test
+    fun insert1MillionConcurrent() {
+        val latch = CountDownLatch(12)
+        BPlusTreeMap<Int, Int>().apply {
+            (0..1_000_000 step 12).insertInOtherThread(this, latch)
+            (1..1_000_000 step 12).reversed().insertInOtherThread(this, latch)
+            (2..1_000_000 step 12).insertInOtherThread(this, latch)
+            (3..1_000_000 step 12).reversed().insertInOtherThread(this, latch)
+            (4..1_000_000 step 12).insertInOtherThread(this, latch)
+            (5..1_000_000 step 12).reversed().insertInOtherThread(this, latch)
+            (6..1_000_000 step 12).insertInOtherThread(this, latch)
+            (7..1_000_000 step 12).reversed().insertInOtherThread(this, latch)
+            (8..1_000_000 step 12).insertInOtherThread(this, latch)
+            (9..1_000_000 step 12).reversed().insertInOtherThread(this, latch)
+            (10..1_000_000 step 12).insertInOtherThread(this, latch)
+            (11..1_000_000 step 12).reversed().insertInOtherThread(this, latch)
+        }
+        latch.await()
+    }
+
+    @Test
     fun testConcurrentWrite() {
 
         val tree = BPlusTreeMap<Int, Int>()
         val latch = CountDownLatch(8)
 
-        val one = (0..1000 step 8)
-        val two = (1..1000 step 8)
-        val three = (2..1000 step 8)
-        val four = (3..1000 step 8)
-        val five = (4..1000 step 8)
-        val six = (5..1000 step 8)
-        val seven = (6..1000 step 8)
-        val eight = (7..1000 step 8)
+        val maxNum = 1500000
+        val one = (0..maxNum step 8).reversed()
+        val two = (1..maxNum step 8)
+        val three = (2..maxNum step 8).reversed()
+        val four = (3..maxNum step 8)
+        val five = (4..maxNum step 8).reversed()
+        val six = (5..maxNum step 8)
+        val seven = (6..maxNum step 8).reversed()
+        val eight = (7..maxNum step 8)
 
-        fun IntProgression.insertInOtherThread() = thread {
-            this.forEach {
-                println("inserting: $it")
-                tree.put(it, it)
-            }
-            latch.countDown()
-        }
+        one.insertInOtherThread(tree, latch)
+        two.insertInOtherThread(tree, latch)
+        three.insertInOtherThread(tree, latch)
+        four.insertInOtherThread(tree, latch)
+        five.insertInOtherThread(tree, latch)
+        six.insertInOtherThread(tree, latch)
+        seven.insertInOtherThread(tree, latch)
+        eight.insertInOtherThread(tree, latch)
 
-        one.insertInOtherThread()
-        two.insertInOtherThread()
-        three.insertInOtherThread()
-        four.insertInOtherThread()
-        five.insertInOtherThread()
-        six.insertInOtherThread()
-        seven.insertInOtherThread()
-        eight.insertInOtherThread()
-
-        latch.await(1, TimeUnit.SECONDS)
+        latch.await()
 
         assertEquals((0..500).toList(), tree.getRange(0, 500).map { it.value })
-        (0..1000).forEach {
+        (0..maxNum).forEach {
             tree.get(it) ?: throw IllegalStateException()
         }
+    }
+
+    fun Iterable<Int>.insertInOtherThread(tree: BPlusTreeMap<Int, Int>, latch: CountDownLatch) = thread {
+        this.forEach {
+//            println("inserting: $it, thread: ${Thread.currentThread()}")
+            tree.put(it, it)
+//            tree.get(it)
+        }
+        latch.countDown()
     }
 }

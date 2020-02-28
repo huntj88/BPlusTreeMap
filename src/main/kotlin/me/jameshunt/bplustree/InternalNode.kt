@@ -8,15 +8,20 @@ class InternalNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
     val keys: Array<Box<Key>?> = Array(numEntriesPerNode) { null }
     val children: Array<Node<Key, Value>?> = Array(numEntriesPerNode + 1) { null }
 
-    override fun get(key: Key): Value? {
+    override fun get(key: Key, releaseAncestor: () -> Unit): Value? {
+        rwLock.lockRead()
+        releaseAncestor()
         val possibleLocationIndex = childIndexLocationOfKey(key)
-        return children[possibleLocationIndex]?.get(key)
+        return children[possibleLocationIndex]?.get(key, releaseAncestor = { rwLock.unlockRead() })
     }
 
-    override fun getRange(start: Key, endInclusive: Key): List<Entry<Key, Value>> {
+    override fun getRange(start: Key, endInclusive: Key, releaseAncestor: () -> Unit): List<Entry<Key, Value>> {
+        rwLock.lockRead()
+        releaseAncestor()
+
         val possibleLocationIndex = childIndexLocationOfKey(start)
         val node = children[possibleLocationIndex]!!
-        return node.getRange(start, endInclusive)
+        return node.getRange(start, endInclusive, releaseAncestor = { rwLock.unlockRead() })
     }
 
     override fun put(entry: Entry<Key, Value>, releaseAncestors: () -> Unit): PutResponse<Key, Value> {
