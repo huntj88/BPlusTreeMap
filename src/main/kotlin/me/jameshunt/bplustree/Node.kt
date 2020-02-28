@@ -1,26 +1,18 @@
 package me.jameshunt.bplustree
 
 import me.jameshunt.bplustree.BPlusTreeMap.Entry
-import java.util.concurrent.locks.ReentrantReadWriteLock
 
 interface Node<Key : Comparable<Key>, Value> {
     val rwLock: ReadWriteLock
 
-    fun get(key: Key): Value?
-    fun getRange(start: Key, endInclusive: Key): List<Entry<Key, Value>>
+    fun get(key: Key, releaseAncestor: () -> Unit): Value?
+    fun getRange(start: Key, endInclusive: Key, releaseAncestor: () -> Unit): List<Entry<Key, Value>>
 
     fun put(entry: Entry<Key, Value>, releaseAncestors: () -> Unit): PutResponse<Key, Value>
 }
 
-fun ReentrantReadWriteLock.WriteLock.release() {
-    assert(this.holdCount == 0 || this.holdCount == 1)
-    if(this.isHeldByCurrentThread && this.holdCount == 1) {
-        this.unlock()
-    }
-}
-
 // work around "cannot use reified type" if i did "Array<Key?>"
-data class Box<T: Comparable<T>>(val key: T) : Comparable<Box<T>> {
+data class Box<T : Comparable<T>>(val key: T) : Comparable<Box<T>> {
     override fun compareTo(other: Box<T>): Int {
         return key.compareTo(other.key)
     }
