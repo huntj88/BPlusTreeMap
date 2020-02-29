@@ -1,6 +1,6 @@
 package me.jameshunt.bplustree
 
-import me.jameshunt.bplustree.BPlusTreeMap.*
+import me.jameshunt.bplustree.BPlusTreeMap.Entry
 
 class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
     override val rwLock: ReadWriteLock = ReadWriteLock()
@@ -24,7 +24,7 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
     }
 
     override fun getRange(start: Key, endInclusive: Key, releaseAncestor: () -> Unit): List<Entry<Key, Value>> {
-        return mutableListOf<Entry<Key,Value>>().apply {
+        return mutableListOf<Entry<Key, Value>>().apply {
             getRangeAscending(
                 collector = this,
                 start = start,
@@ -44,7 +44,7 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
         next!!.rwLock.lockRead()
         releaseAncestor()
 
-        while(next != null) {
+        while (next != null) {
             next.entries.forEach { entry ->
                 entry?.let {
                     when (entry.key in start..endInclusive) {
@@ -68,6 +68,7 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
                 }
             }
             false -> {
+                resolvePotentialWriteDeadlock()
                 leftLink?.rwLock?.lockWrite()
                 rightLink?.rwLock?.lockWrite()
                 splitLeaf(entry).also {
@@ -143,6 +144,24 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
                 PutResponse.Success
             }
             else -> throw IllegalStateException("should never get here")
+        }
+    }
+
+    private fun resolvePotentialWriteDeadlock() {
+        // TODO: does `leftLink?.entries?.last() != null` need to be synchronized?
+        if (leftLink?.rwLock?.isWriteLocked() == true && leftLink?.entries?.last() != null) {
+            // other thread is trying to do its own thing starting from the left node. Let it do its thing first
+            // other thread that already has pending lock on this node will get it, since order is fair,
+            // this node then queues itself up to acquire the same write lock again
+            rwLock.unlockWrite()
+            rwLock.lockWrite()
+        }
+        if (rightLink?.rwLock?.isWriteLocked() == true && rightLink?.entries?.last() != null) {
+            // other thread is trying to do its own thing starting from the right node. Let it do its thing first
+            // other thread that already has pending lock on this node will get it, since order is fair,
+            // this node then queues itself up to acquire the same write lock again
+            rwLock.unlockWrite()
+            rwLock.lockWrite()
         }
     }
 }

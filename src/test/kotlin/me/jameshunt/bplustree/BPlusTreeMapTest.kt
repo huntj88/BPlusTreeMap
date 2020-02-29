@@ -160,20 +160,16 @@ class BPlusTreeMapTest {
 
     @Test
     fun insert1MillionConcurrent() {
-        val latch = CountDownLatch(12)
+        val numThreads = 12
+        val latch = CountDownLatch(numThreads)
+
         BPlusTreeMap<Int, Int>().apply {
-            (0..1_000_000 step 12).insertInOtherThread(this, latch)
-            (1..1_000_000 step 12).reversed().insertInOtherThread(this, latch)
-            (2..1_000_000 step 12).insertInOtherThread(this, latch)
-            (3..1_000_000 step 12).reversed().insertInOtherThread(this, latch)
-            (4..1_000_000 step 12).insertInOtherThread(this, latch)
-            (5..1_000_000 step 12).reversed().insertInOtherThread(this, latch)
-            (6..1_000_000 step 12).insertInOtherThread(this, latch)
-            (7..1_000_000 step 12).reversed().insertInOtherThread(this, latch)
-            (8..1_000_000 step 12).insertInOtherThread(this, latch)
-            (9..1_000_000 step 12).reversed().insertInOtherThread(this, latch)
-            (10..1_000_000 step 12).insertInOtherThread(this, latch)
-            (11..1_000_000 step 12).reversed().insertInOtherThread(this, latch)
+            (0 until numThreads step 2).forEach {
+                (it..2_000_000 step numThreads).insertInOtherThread(this, latch)
+                (it + 1..2_000_000 step numThreads).reversed().insertInOtherThread(this, latch)
+            }
+
+
         }
         latch.await()
     }

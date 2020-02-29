@@ -18,15 +18,15 @@ class ReadWriteLock {
         return when (write.availablePermits() == 0) {
             true -> {
                 // wait until write operation on node has finished, then acquire read lock
-                write.tryAcquireOrError()
-                read.tryAcquireOrError()
+                write.acquireOrError()
+                read.acquireOrError()
                 write.release()
                 block().also {
                     read.release()
                 }
             }
             false -> {
-                read.tryAcquireOrError()
+                read.acquireOrError()
                 block().also {
                     read.release()
                 }
@@ -38,13 +38,13 @@ class ReadWriteLock {
         when (write.availablePermits() == 0) {
             true -> {
                 // wait until write operation on node has finished, then acquire read lock
-                write.tryAcquireOrError()
-                read.tryAcquireOrError()
+                write.acquireOrError()
+                read.acquireOrError()
                 write.release()
             }
             false -> {
                 // write not locked
-                read.tryAcquireOrError()
+                read.acquireOrError()
             }
         }
     }
@@ -56,8 +56,8 @@ class ReadWriteLock {
     fun lockWrite() {
         // wait for all read permits to be acquired. will mean all pending reads are done
         // acquire write lock, then release all read permits
-        read.tryAcquireOrError(numReadPermits)
-        write.tryAcquireOrError()
+        read.acquireOrError(numReadPermits)
+        write.acquireOrError()
         read.release(numReadPermits)
     }
 
@@ -69,7 +69,11 @@ class ReadWriteLock {
         }
     }
 
-    private fun Semaphore.tryAcquireOrError(numPermits: Int = 1) {
+    fun isWriteLocked(): Boolean {
+        return write.availablePermits() == 0
+    }
+
+    private fun Semaphore.acquireOrError(numPermits: Int = 1) {
         if (!this.tryAcquire(numPermits, 2, TimeUnit.SECONDS)) {
             throw IllegalStateException("Deadlock")
         }
