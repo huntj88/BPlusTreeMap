@@ -6,7 +6,16 @@ import java.util.concurrent.TimeUnit
 // TODO: create visualization tool for tree. also show whether nodes are locked or not
 
 /**
+ * Behaves as follows
  *
+ * while write lock is not locked, multiple read locks from different threads can be acquired.
+ * when there are no read locks, a write lock can be acquired
+ *
+ * if write lock is being acquired and there are existing read locks,
+ * the write lock waits for all of the reads that were already added to the queue to finish,
+ * and then does the writing operation
+ *
+ * if read locks are being acquired when the write lock is locked, the reads will take place after the write lock has unlocked
  */
 
 class ReadWriteLock {
