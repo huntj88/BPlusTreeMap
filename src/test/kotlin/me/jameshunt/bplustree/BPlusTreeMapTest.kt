@@ -211,20 +211,32 @@ class BPlusTreeMapTest {
         val numThreads = 2
         val latch = CountDownLatch(numThreads)
 
-        BPlusTreeMap<Int, Int>().apply {
+        val tree = BPlusTreeMap<Int, Int>().apply {
             (0 until 50000).forEach {
                 this.put(it, it)
             }
             (50000..1000000).insertInOtherThread(this, latch)
             thread {
                 println("started")
-                (-100000..1000000).mapNotNull { this.get(it) }.size.let(::println)
+                (-100000..1000000).mapNotNull { this.get(it) }.size.let { size ->
+                    println("get size: $size")
+                    assert(size > 50000)
+                }
                 println("read finished")
                 latch.countDown()
             }
 
+            thread {
+                Thread.sleep(400)
+                this.getRange(0, 500000).size.let { size ->
+                    println("range size: $size")
+                    assert(size > 50000)
+                }
+            }
+
         }
         latch.await()
+        assertEquals(1_000_001, tree.getRange(0, 1_000_000).size)
     }
 
     fun Iterable<Int>.insertInOtherThread(tree: BPlusTreeMap<Int, Int>, latch: CountDownLatch) = thread {
