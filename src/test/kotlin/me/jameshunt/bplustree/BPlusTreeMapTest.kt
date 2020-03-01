@@ -131,7 +131,7 @@ class BPlusTreeMapTest {
     }
 
     @Test
-    fun test1Million() {
+    fun `get 6 values from 1Million, and range of 500 out of 1Million`() {
         bTree.get(4343) ?: throw IllegalStateException()
         bTree.get(234233) ?: throw IllegalStateException()
         bTree.get(577432) ?: throw IllegalStateException()
@@ -144,6 +144,56 @@ class BPlusTreeMapTest {
         if (501 != range.size) {
             throw IllegalStateException()
         }
+    }
+
+    @Test
+    fun `get couple hundred thousand concurrently`() {
+        val latch = CountDownLatch(8)
+        thread {
+            bTree.get(4343) ?: throw IllegalStateException()
+            latch.countDown()
+        }
+        thread {
+            bTree.get(4343) ?: throw IllegalStateException()
+            latch.countDown()
+        }
+        thread {
+            bTree.get(234233) ?: throw IllegalStateException()
+            latch.countDown()
+        }
+        thread {
+            bTree.get(577432) ?: throw IllegalStateException()
+            latch.countDown()
+        }
+        thread {
+            bTree.get(468743) ?: throw IllegalStateException()
+            latch.countDown()
+        }
+        thread {
+            bTree.get(936743) ?: throw IllegalStateException()
+            latch.countDown()
+        }
+        thread {
+            (0..200_000 step 3).forEach {
+                bTree.get(it) ?: throw IllegalStateException()
+            }
+            latch.countDown()
+        }
+        thread {
+            (0..200_000 step 2).forEach {
+                bTree.get(it) ?: throw IllegalStateException()
+            }
+            latch.countDown()
+        }
+        bTree.get(1_000_001)?.let { throw IllegalStateException("should be null") }
+
+        val range = bTree.getRange(10000, 10500)
+        println(range.take(200))
+        if (501 != range.size) {
+            throw IllegalStateException()
+        }
+
+        latch.await()
     }
 
     @Test
@@ -241,7 +291,7 @@ class BPlusTreeMapTest {
 
     fun Iterable<Int>.insertInOtherThread(tree: BPlusTreeMap<Int, Int>, latch: CountDownLatch) = thread {
         this.forEach {
-//            println("inserting: $it, thread: ${Thread.currentThread()}")
+            //            println("inserting: $it, thread: ${Thread.currentThread()}")
             tree.put(it, it)
 //            tree.get(it)
         }
