@@ -47,7 +47,7 @@ class InternalNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
             is PutResponse.Success -> putResponse
             is PutResponse.NodeFull<Key, Value> -> insertPromoted(putResponse).also {
                 if(it is PutResponse.Success) {
-                    releaseThisNodeAndAncestors()
+                    rwLock.unlockWrite()
                 }
             }
         }
