@@ -24,28 +24,8 @@ class ReadWriteLock {
     private val write: Semaphore = Semaphore(1, true)
 
     fun <T> withReadLock(block: () -> T): T {
-        return when (isWriteLocked()) {
-            true -> {
-                // wait until write operation on node has finished, then acquire read lock
-                synchronized(this) {
-                    write.acquireOrError()
-                    read.acquireOrError()
-                }
-                write.release()
-                block().also {
-                    read.release()
-                }
-            }
-            false -> {
-                synchronized(this) {
-                    assert(!isWriteLocked())
-                    read.acquireOrError()
-                }
-                block().also {
-                    read.release()
-                }
-            }
-        }
+        lockRead()
+        return block().also { unlockRead() }
     }
 
     fun lockRead() {
