@@ -1,16 +1,21 @@
 # BPlusTreeMap
 
-Thread safe concurrently Modifiable in memory B+ Tree
+## Thread safe in memory B+ Tree
 
 Modified from my original BTreeMap: https://github.com/huntj88/BTreeMap
 
-Each node has its own ReadWriteLock and will release its ancestor nodes as soon as possible. 
+The BTree locks the tiniest portion of the data structure that is needed for the write operation, while the rest of the tree is available to do other operations.
 
-During a write operation, if it has been determined that a node's structure will not change from the write operation, its safe to release the ancestor nodes write locks.
+Each node has its own ReadWriteLock.
 
-During a read operation its safe to release the nodes ancestors read locks as soon as a lock is acquired on a child node
+During a write operation, if it has been determined that the tree's structure will not change from the write operation, its safe to release the ancestor nodes write locks.
+
+During a read operation its safe to release the parent node read lock as soon as a lock is acquired on a child node.
+
+There can only be one holder of each nodes write lock, while the number of read lock holders per node is only limited by a variable (set to 1000)
 
 [for more information about how the ReadWriteLock works](src/main/kotlin/me/jameshunt/bplustree/ReadWriteLock.kt)
+
 
 ### Usage
 ##### `fun put(key: Key, value: Value)`
