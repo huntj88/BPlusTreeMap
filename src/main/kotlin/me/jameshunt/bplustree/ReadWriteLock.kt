@@ -15,18 +15,23 @@ class ReadWriteLock {
     private val write: Semaphore = Semaphore(1, true)
 
     fun <T> withReadLock(block: () -> T): T {
-        return when (write.availablePermits() == 0) {
+        return when (isWriteLocked()) {
             true -> {
                 // wait until write operation on node has finished, then acquire read lock
-                write.acquireOrError()
-                read.acquireOrError()
+                synchronized(this) {
+                    write.acquireOrError()
+                    read.acquireOrError()
+                }
                 write.release()
                 block().also {
                     read.release()
                 }
             }
             false -> {
-                read.acquireOrError()
+                synchronized(this) {
+                    assert(!isWriteLocked())
+                    read.acquireOrError()
+                }
                 block().also {
                     read.release()
                 }
@@ -35,16 +40,19 @@ class ReadWriteLock {
     }
 
     fun lockRead() {
-        when (write.availablePermits() == 0) {
-            true -> {
-                // wait until write operation on node has finished, then acquire read lock
-                write.acquireOrError()
-                read.acquireOrError()
-                write.release()
-            }
-            false -> {
-                // write not locked
-                read.acquireOrError()
+        synchronized(this) {
+            when (isWriteLocked()) {
+                true -> {
+                    // wait until write operation on node has finished, then acquire read lock
+                    write.acquireOrError()
+                    read.acquireOrError()
+                    write.release()
+                }
+                false -> {
+                    // write not locked
+                    read.acquireOrError()
+
+                }
             }
         }
     }
@@ -56,13 +64,15 @@ class ReadWriteLock {
     fun lockWrite() {
         // wait for all read permits to be acquired. will mean all pending reads are done
         // acquire write lock, then release all read permits
-        read.acquireOrError(numReadPermits)
-        write.acquireOrError()
+        synchronized(this) {
+            read.acquireOrError(numReadPermits)
+            write.acquireOrError()
+        }
         read.release(numReadPermits)
     }
 
     fun unlockWrite() {
-        if (write.availablePermits() == 0) {
+        if (isWriteLocked()) {
             write.release()
         } else {
             throw IllegalStateException()

@@ -4,7 +4,6 @@ import org.junit.Assert.assertEquals
 import org.junit.BeforeClass
 import org.junit.Test
 import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 import kotlin.random.Random
 
@@ -207,6 +206,27 @@ class BPlusTreeMapTest {
         }
     }
 
+    @Test
+    fun readWriteSameTime() {
+        val numThreads = 2
+        val latch = CountDownLatch(numThreads)
+
+        BPlusTreeMap<Int, Int>().apply {
+            (0 until 50000).forEach {
+                this.put(it, it)
+            }
+            (50000..1000000).insertInOtherThread(this, latch)
+            thread {
+                println("started")
+                (-100000..1000000).mapNotNull { this.get(it) }.size.let(::println)
+                println("read finished")
+                latch.countDown()
+            }
+
+        }
+        latch.await()
+    }
+
     fun Iterable<Int>.insertInOtherThread(tree: BPlusTreeMap<Int, Int>, latch: CountDownLatch) = thread {
         this.forEach {
 //            println("inserting: $it, thread: ${Thread.currentThread()}")
@@ -214,5 +234,6 @@ class BPlusTreeMapTest {
 //            tree.get(it)
         }
         latch.countDown()
+        println("done")
     }
 }
