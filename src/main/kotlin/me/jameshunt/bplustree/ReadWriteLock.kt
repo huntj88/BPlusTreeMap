@@ -71,6 +71,10 @@ class ReadWriteLock {
         return write.availablePermits() == 0
     }
 
+    fun isReadLocked(): Boolean {
+        return read.availablePermits() != numReadPermits
+    }
+
     private fun Semaphore.acquireOrError(numPermits: Int = 1) {
         if (!this.tryAcquire(numPermits, 2, TimeUnit.SECONDS)) {
             throw IllegalStateException("Deadlock")

@@ -151,16 +151,18 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
     }
 
     private fun resolvePotentialWriteDeadlock() {
-        // TODO: does `leftLink?.entries?.last() != null` need to be synchronized?
-        if (leftLink?.rwLock?.isWriteLocked() == true && leftLink?.entries?.last() != null) {
-            // other thread is trying to do its own thing starting from the left node. Let it do its thing first
-            // other thread that already has pending lock on this node will get it, since order is fair,
-            // this node then queues itself up to acquire the same write lock again
-            rwLock.unlockWrite()
-            rwLock.lockWrite()
-        }
-        if (rightLink?.rwLock?.isWriteLocked() == true && rightLink?.entries?.last() != null) {
-            // other thread is trying to do its own thing starting from the right node. Let it do its thing first
+        val leftNodeSplitting = leftLink
+            ?.let { synchronized(it) { it.rwLock.isWriteLocked() && it.entries.last() != null} }
+            ?: false
+
+        val rightNodeSplitting = rightLink
+            ?.let { synchronized(it) { it.rwLock.isWriteLocked() && it.entries.last() != null} }
+            ?: false
+
+        val rangeSelectAscendingLeftNodeReadLocked = leftLink?.rwLock?.isReadLocked() ?: false
+
+        if(leftNodeSplitting || rightNodeSplitting || rangeSelectAscendingLeftNodeReadLocked) {
+            // other thread is trying to do its own thing starting from a neighbor node. Let it do its thing first
             // other thread that already has pending lock on this node will get it, since order is fair,
             // this node then queues itself up to acquire the same write lock again
             rwLock.unlockWrite()

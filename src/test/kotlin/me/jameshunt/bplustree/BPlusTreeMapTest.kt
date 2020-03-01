@@ -208,7 +208,7 @@ class BPlusTreeMapTest {
     }
 
     @Test
-    fun insert1MillionConcurrent() {
+    fun insert2MillionConcurrent() {
         val numThreads = 12
         val latch = CountDownLatch(numThreads)
 
@@ -287,6 +287,70 @@ class BPlusTreeMapTest {
         }
         latch.await()
         assertEquals(1_000_001, tree.getRange(0, 1_000_000).size)
+    }
+
+    @Test
+    fun sameOverAndOverDifferentThread() {
+        val latch = CountDownLatch(6)
+        val testData = (0 until 60000).toList()
+        val random = Random(1)
+
+        val tree = BPlusTreeMap<Int, Int>()
+
+        testData
+            .sortedBy { random.nextDouble() }
+            .forEach { tree.put(it, it) }
+
+        thread {
+            (1..5000 step 2).forEach {
+                tree.put(32999, it)
+            }
+            latch.countDown()
+        }
+
+        thread {
+            (0..5000 step 2).forEach {
+                tree.put(32999, it)
+            }
+            latch.countDown()
+        }
+
+        thread {
+            (1..5000 step 2).forEach {
+                tree.put(33000, it)
+            }
+            latch.countDown()
+        }
+
+        thread {
+            (0..5000 step 2).forEach {
+                tree.put(33000, it)
+            }
+            latch.countDown()
+        }
+
+        thread {
+            (0..2000).forEach {
+                Thread.sleep(8)
+                tree.get(32999) ?: throw IllegalStateException()
+                tree.get(33000) ?: throw IllegalStateException()
+            }
+            latch.countDown()
+        }
+
+        thread {
+            (0..2000).forEach {
+                Thread.sleep(8)
+                tree.getRange(32990, 33010)
+            }
+            latch.countDown()
+        }
+
+        latch.await()
+
+        testData.forEach {
+            tree.get(it) ?: throw IllegalStateException()
+        }
     }
 
     fun Iterable<Int>.insertInOtherThread(tree: BPlusTreeMap<Int, Int>, latch: CountDownLatch) = thread {
