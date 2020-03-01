@@ -49,7 +49,10 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
                 entry?.let {
                     when (entry.key in start..endInclusive) {
                         true -> collector.add(entry)
-                        false -> if (collector.isEmpty()) Unit else return
+                        false -> if (collector.isEmpty()) Unit else {
+                            next!!.rwLock.unlockRead()
+                            return
+                        }
                     }
                 }
             }

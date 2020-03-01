@@ -60,7 +60,6 @@ class ReadWriteLock {
                 false -> {
                     // write not locked
                     read.acquireOrError()
-
                 }
             }
         }
