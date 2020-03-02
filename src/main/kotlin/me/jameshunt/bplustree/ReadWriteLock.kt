@@ -23,26 +23,21 @@ class ReadWriteLock {
     private val read: Semaphore = Semaphore(numReadPermits, true)
     private val write: Semaphore = Semaphore(1, true)
 
+    /**
+     * finalize if you plan for the node to be garbage collected
+     */
+    private var isFinalized: Boolean = false
+    fun finalize() {
+        isFinalized = true
+    }
+
     fun <T> withReadLock(block: () -> T): T {
         lockRead()
         return block().also { unlockRead() }
     }
 
     fun lockRead() {
-        synchronized(this) {
-            when (isWriteLocked()) {
-                true -> {
-                    // wait until write operation on node has finished, then acquire read lock
-                    write.acquireOrError()
-                    read.acquireOrError()
-                    write.release()
-                }
-                false -> {
-                    // write not locked
-                    read.acquireOrError()
-                }
-            }
-        }
+        read.acquireOrError()
     }
 
     fun unlockRead() {
@@ -51,16 +46,13 @@ class ReadWriteLock {
 
     fun lockWrite() {
         // wait for all read permits to be acquired. will mean all pending reads are done
-        // acquire write lock, then release all read permits
-        synchronized(this) {
-            read.acquireOrError(numReadPermits)
-            write.acquireOrError()
-        }
-        read.release(numReadPermits)
+        read.acquireOrError(numReadPermits)
+        write.acquireOrError()
     }
 
     fun unlockWrite() {
         if (isWriteLocked()) {
+            read.release(numReadPermits)
             write.release()
         } else {
             throw IllegalStateException()
@@ -72,12 +64,22 @@ class ReadWriteLock {
     }
 
     fun isReadLocked(): Boolean {
-        return read.availablePermits() != numReadPermits
+        return read.availablePermits() != numReadPermits && !isWriteLocked()
     }
 
     private fun Semaphore.acquireOrError(numPermits: Int = 1) {
         if (!this.tryAcquire(numPermits, 2, TimeUnit.SECONDS)) {
-            throw IllegalStateException("Deadlock")
+            synchronized(isFinalized) {
+                if (isFinalized) throw IllegalStateException("Trying to access finalized lock")
+            }
+            val message = """
+                Deadlock
+                isWriteLocked:           ${isWriteLocked()}
+                isReadLocked:            ${isReadLocked()}
+                read permits remaining:  ${read.availablePermits()}
+            """.trimIndent()
+
+            throw IllegalStateException(message)
         }
     }
 }

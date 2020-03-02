@@ -258,7 +258,7 @@ class BPlusTreeMapTest {
 
     @Test
     fun readWriteSameTime() {
-        val numThreads = 2
+        val numThreads = 4
         val latch = CountDownLatch(numThreads)
 
         val tree = BPlusTreeMap<Int, Int>().apply {
@@ -277,11 +277,23 @@ class BPlusTreeMapTest {
             }
 
             thread {
-                Thread.sleep(400)
-                this.getRange(0, 500000).size.let { size ->
-                    println("range size: $size")
-                    assert(size > 50000)
+                (0..100).forEach {
+                    Thread.sleep(40)
+                    this.getRange(0, 500000).size.let { size ->
+                        //                        println("range size: $size")
+                        assert(size > 50000)
+                    }
                 }
+                latch.countDown()
+            }
+            thread {
+                (0..100).forEach {
+                    Thread.sleep(40)
+                    this.getRange(400_000, 800_000).size.let { size ->
+                        //                        println("range size: $size")
+                    }
+                }
+                latch.countDown()
             }
 
         }
