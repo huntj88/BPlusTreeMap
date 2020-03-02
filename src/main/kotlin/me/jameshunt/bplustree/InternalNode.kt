@@ -58,6 +58,7 @@ class InternalNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
 
         return when (isFull()) {
             true -> {
+                rwLock.finalize()
                 val halfNumEntry = numEntriesPerNode / 2
                 when {
                     putResponse.promoted < keys[0]!! -> {

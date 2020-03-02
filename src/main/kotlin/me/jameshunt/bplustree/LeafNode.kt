@@ -84,6 +84,8 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
 
     private fun splitLeaf(newEntry: Entry<Key, Value>): PutResponse.NodeFull<Key, Value> {
         entries.forEach { assert(it != null) }
+        rwLock.finalize()
+
         // TODO: optimize sort out
         val sorted = (entries + arrayOf(newEntry)).apply { sort() }
 
@@ -159,9 +161,7 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
             ?.let { synchronized(it) { it.rwLock.isWriteLocked() && it.entries.last() != null} }
             ?: false
 
-        val rangeSelectAscendingLeftNodeReadLocked = leftLink?.rwLock?.isReadLocked() ?: false
-
-        if(leftNodeSplitting || rightNodeSplitting || rangeSelectAscendingLeftNodeReadLocked) {
+        if(leftNodeSplitting || rightNodeSplitting) {
             // other thread is trying to do its own thing starting from a neighbor node. Let it do its thing first
             // other thread that already has pending lock on this node will get it, since order is fair,
             // this node then queues itself up to acquire the same write lock again
