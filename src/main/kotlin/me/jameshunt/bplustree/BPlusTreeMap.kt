@@ -2,7 +2,7 @@ package me.jameshunt.bplustree
 
 class BPlusTreeMap<Key: Comparable<Key>, Value> {
 
-    var rootNode: Node<Key, Value> = LeafNode()
+    private var rootNode: Node<Key, Value> = LeafNode.LeafNodeImpl()
 
     fun get(key: Key): Value? {
         return rootNode.get(key)
