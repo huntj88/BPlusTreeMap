@@ -71,12 +71,12 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
                 }
             }
             false -> {
-                resolvePotentialWriteDeadlock()
-                leftLink?.rwLock?.lockWrite()
-                rightLink?.rwLock?.lockWrite()
+//                resolvePotentialWriteDeadlock()
+//                leftLink?.rwLock?.lockWrite()
+//                rightLink?.rwLock?.lockWrite()
                 splitLeaf(entry).also {
-                    leftLink?.rwLock?.unlockWrite()
-                    rightLink?.rwLock?.unlockWrite()
+//                    leftLink?.rwLock?.unlockWrite()
+//                    rightLink?.rwLock?.unlockWrite()
                 }
             }
         }
@@ -94,7 +94,7 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
                 node.entries[it] = sorted[it]
             }
 
-            node.leftLink = leftLink
+//            node.leftLink = leftLink
         }
 
         val right = LeafNode<Key, Value>().also { node ->
@@ -102,15 +102,15 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
                 node.entries[newNodeIndex] = sorted[i]
             }
 
-            node.leftLink = left
-            node.rightLink = rightLink
+//            node.leftLink = left
+//            node.rightLink = rightLink
         }
 
-        left.rightLink = right
+//        left.rightLink = right
 
         // reconnect existing nodes
-        leftLink?.rightLink = left
-        rightLink?.leftLink = right
+//        leftLink?.rightLink = left
+//        rightLink?.leftLink = right
 
         return PutResponse.NodeFull(Box(right.entries.first()!!.key), left, right)
     }
