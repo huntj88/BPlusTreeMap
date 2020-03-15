@@ -3,7 +3,7 @@ package me.jameshunt.bplustree
 class BPlusTreeMap<Key : Comparable<Key>, Value> {
 
     private val readWriteLock = ReadWriteLock()
-    private var rootNode: Node<Key, Value> = LeafNode()
+    private var rootNode: Node<Key, Value> = LeafNode(LeafNeighborAccess(), LeafNeighborAccess())
 
     fun get(key: Key): Value? {
         readWriteLock.lockRead()
@@ -18,7 +18,12 @@ class BPlusTreeMap<Key : Comparable<Key>, Value> {
 
     fun put(key: Key, value: Value) {
         readWriteLock.lockWrite()
-        rootNode.rwLock.lockWrite()
+
+        when(val rootNode = rootNode) {
+            is LeafNode -> rootNode.lockLeafWrite()
+            is InternalNode -> rootNode.rwLock.lockWrite()
+            else -> TODO()
+        }
 
         val releaseAncestors = { readWriteLock.unlockWrite() }
         val putResponse = rootNode.put(Entry(key, value), releaseAncestors = releaseAncestors)

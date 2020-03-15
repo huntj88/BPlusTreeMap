@@ -28,7 +28,11 @@ class InternalNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
         val possibleLocationIndex = childIndexLocationOfKey(entry.key)
         val childNode = children[possibleLocationIndex]!!
 
-        childNode.rwLock.lockWrite()
+        when(childNode) {
+            is LeafNode -> childNode.lockLeafWrite()
+            is InternalNode -> childNode.rwLock.lockWrite()
+            else -> TODO()
+        }
 
         val ancestorsReleased = keys.last() == null
         if (ancestorsReleased) {
