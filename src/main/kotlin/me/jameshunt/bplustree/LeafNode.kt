@@ -2,12 +2,18 @@ package me.jameshunt.bplustree
 
 import me.jameshunt.bplustree.BPlusTreeMap.Entry
 
-class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
-    override val rwLock: ReadWriteLock = ReadWriteLock()
+class LeafNode<Key : Comparable<Key>, Value>(
+    private val leftLink2: LeafNeighborAccess,
+    private val rightLink2: LeafNeighborAccess
+) : Node<Key, Value> {
 
+    init {
+        leftLink2.setRight(this)
+        rightLink2.setLeft(this)
+    }
+
+    override val rwLock: ReadWriteLock = ReadWriteLock()
     private val entries: Array<Entry<Key, Value>?> = Array(numEntriesPerNode) { null }
-    private var leftLink: LeafNode<Key, Value>? = null
-    private var rightLink: LeafNode<Key, Value>? = null
 
     override fun get(key: Key, releaseAncestor: () -> Unit): Value? {
         return rwLock.withReadLock {
@@ -24,62 +30,71 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
     }
 
     override fun getRange(start: Key, endInclusive: Key, releaseAncestor: () -> Unit): List<Entry<Key, Value>> {
-        return mutableListOf<Entry<Key, Value>>().apply {
-            getRangeAscending(
-                collector = this,
-                start = start,
-                endInclusive = endInclusive,
-                releaseAncestor = releaseAncestor
-            )
-        }
+        TODO()
+//        return mutableListOf<Entry<Key, Value>>().apply {
+//            getRangeAscending(
+//                collector = this,
+//                start = start,
+//                endInclusive = endInclusive,
+//                releaseAncestor = releaseAncestor
+//            )
+//        }
     }
 
-    private fun getRangeAscending(
-        collector: MutableList<Entry<Key, Value>>,
-        start: Key,
-        endInclusive: Key,
-        releaseAncestor: () -> Unit
-    ) {
-        var next = this as LeafNode<Key, Value>?
-        next!!.rwLock.lockRead()
-        releaseAncestor()
-
-        while (next != null) {
-            next.entries.forEach { entry ->
-                entry?.let {
-                    when (entry.key in start..endInclusive) {
-                        true -> collector.add(entry)
-                        false -> if (collector.isEmpty()) Unit else {
-                            next!!.rwLock.unlockRead()
-                            return
-                        }
-                    }
-                }
-            }
-            val nextRightLink = next.rightLink?.also { it.rwLock.lockRead() }
-            next.rwLock.unlockRead()
-            next = nextRightLink
-        }
-    }
+//    private fun getRangeAscending(
+//        collector: MutableList<Entry<Key, Value>>,
+//        start: Key,
+//        endInclusive: Key,
+//        releaseAncestor: () -> Unit
+//    ) {
+//        var next = this as LeafNode<Key, Value>?
+//        next!!.rwLock.lockRead()
+//        releaseAncestor()
+//
+//        while (next != null) {
+//            next.entries.forEach { entry ->
+//                entry?.let {
+//                    when (entry.key in start..endInclusive) {
+//                        true -> collector.add(entry)
+//                        false -> if (collector.isEmpty()) Unit else {
+//                            next!!.rwLock.unlockRead()
+//                            return
+//                        }
+//                    }
+//                }
+//            }
+//            val nextRightLink = next.rightLink?.also { it.rwLock.lockRead() }
+//            next.rwLock.unlockRead()
+//            next = nextRightLink
+//        }
+//    }
 
     override fun put(entry: Entry<Key, Value>, releaseAncestors: () -> Unit): PutResponse<Key, Value> {
         return when (entries.last() == null) {
             true -> {
                 releaseAncestors()
                 putInNodeWithEmptySpace(entry).also {
+                    leftLink2.unlockLeftWrite()
                     rwLock.unlockWrite()
+                    rightLink2.unlockRightWrite()
                 }
             }
             false -> {
-//                resolvePotentialWriteDeadlock()
-//                leftLink?.rwLock?.lockWrite()
-//                rightLink?.rwLock?.lockWrite()
                 splitLeaf(entry).also {
-//                    leftLink?.rwLock?.unlockWrite()
-//                    rightLink?.rwLock?.unlockWrite()
+                    leftLink2.unlockLeftWrite()
+                    rightLink2.unlockRightWrite()
                 }
             }
         }
+    }
+
+    fun lockLeafWrite() {
+        leftLink2.access.lock()
+        rightLink2.access.lock()
+
+        leftLink2.lockLeftWrite()
+        this.rwLock.lockWrite()
+        rightLink2.lockRightWrite()
     }
 
     private fun splitLeaf(newEntry: Entry<Key, Value>): PutResponse.NodeFull<Key, Value> {
@@ -89,28 +104,19 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
         // TODO: optimize sort out
         val sorted = (entries + arrayOf(newEntry)).apply { sort() }
 
-        val left = LeafNode<Key, Value>().also { node ->
+        val newMiddleLink = LeafNeighborAccess()
+
+        val left = LeafNode<Key, Value>(leftLink2, newMiddleLink).also { node ->
             (0 until numEntriesPerNode / 2).forEach {
                 node.entries[it] = sorted[it]
             }
-
-//            node.leftLink = leftLink
         }
 
-        val right = LeafNode<Key, Value>().also { node ->
+        val right = LeafNode<Key, Value>(newMiddleLink, rightLink2).also { node ->
             (numEntriesPerNode / 2 until sorted.size).forEachIndexed { newNodeIndex, i ->
                 node.entries[newNodeIndex] = sorted[i]
             }
-
-//            node.leftLink = left
-//            node.rightLink = rightLink
         }
-
-//        left.rightLink = right
-
-        // reconnect existing nodes
-//        leftLink?.rightLink = left
-//        rightLink?.leftLink = right
 
         return PutResponse.NodeFull(Box(right.entries.first()!!.key), left, right)
     }
@@ -149,24 +155,6 @@ class LeafNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
                 PutResponse.Success
             }
             else -> throw IllegalStateException("should never get here")
-        }
-    }
-
-    private fun resolvePotentialWriteDeadlock() {
-        val leftNodeSplitting = leftLink
-            ?.let { synchronized(it) { it.rwLock.isWriteLocked() && it.entries.last() != null} }
-            ?: false
-
-        val rightNodeSplitting = rightLink
-            ?.let { synchronized(it) { it.rwLock.isWriteLocked() && it.entries.last() != null} }
-            ?: false
-
-        if(leftNodeSplitting || rightNodeSplitting) {
-            // other thread is trying to do its own thing starting from a neighbor node. Let it do its thing first
-            // other thread that already has pending lock on this node will get it, since order is fair,
-            // this node then queues itself up to acquire the same write lock again
-            rwLock.unlockWrite()
-            rwLock.lockWrite()
         }
     }
 }
