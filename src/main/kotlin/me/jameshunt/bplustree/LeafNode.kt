@@ -30,44 +30,59 @@ class LeafNode<Key : Comparable<Key>, Value>(
     }
 
     override fun getRange(start: Key, endInclusive: Key, releaseAncestor: () -> Unit): List<Entry<Key, Value>> {
-        TODO()
-//        return mutableListOf<Entry<Key, Value>>().apply {
-//            getRangeAscending(
-//                collector = this,
-//                start = start,
-//                endInclusive = endInclusive,
-//                releaseAncestor = releaseAncestor
-//            )
-//        }
+        return mutableListOf<Entry<Key, Value>>().apply {
+            getRangeAscending(
+                collector = this,
+                start = start,
+                endInclusive = endInclusive,
+                releaseAncestor = releaseAncestor
+            )
+        }
     }
 
-//    private fun getRangeAscending(
-//        collector: MutableList<Entry<Key, Value>>,
-//        start: Key,
-//        endInclusive: Key,
-//        releaseAncestor: () -> Unit
-//    ) {
-//        var next = this as LeafNode<Key, Value>?
-//        next!!.rwLock.lockRead()
-//        releaseAncestor()
-//
-//        while (next != null) {
-//            next.entries.forEach { entry ->
-//                entry?.let {
-//                    when (entry.key in start..endInclusive) {
-//                        true -> collector.add(entry)
-//                        false -> if (collector.isEmpty()) Unit else {
-//                            next!!.rwLock.unlockRead()
-//                            return
-//                        }
-//                    }
-//                }
-//            }
-//            val nextRightLink = next.rightLink?.also { it.rwLock.lockRead() }
-//            next.rwLock.unlockRead()
-//            next = nextRightLink
-//        }
-//    }
+    private fun getRangeAscending(
+        collector: MutableList<Entry<Key, Value>>,
+        start: Key,
+        endInclusive: Key,
+        releaseAncestor: () -> Unit
+    ) {
+        var next = this as LeafNode<Key, Value>?
+        next!!.leftLink.access.lock()
+        next.rightLink.access.lock()
+        next.rwLock.lockRead()
+        releaseAncestor()
+
+        while (next != null) {
+            next.entries.forEach { entry ->
+                entry?.let {
+                    when (entry.key in start..endInclusive) {
+                        true -> collector.add(entry)
+                        false -> if (collector.isEmpty()) Unit else {
+                            next!!.rwLock.unlockRead()
+
+                            next!!.leftLink.access.unlock()
+                            next!!.rightLink.access.unlock()
+                            return
+                        }
+                    }
+                }
+            }
+
+            val nextRightLink = next.rightLink.getRight()?.also {
+                assert(it.leftLink.access.isLocked)
+                it.rightLink.access.lock()
+                it.rwLock.lockRead()
+            }
+            next.rwLock.unlockRead()
+            next.leftLink.access.unlock()
+
+            if(nextRightLink == null) {
+                next.rightLink.access.unlock()
+            }
+
+            next = nextRightLink as LeafNode<Key, Value>?
+        }
+    }
 
     override fun put(entry: Entry<Key, Value>, releaseAncestors: () -> Unit): PutResponse<Key, Value> {
         return when (entries.last() == null) {

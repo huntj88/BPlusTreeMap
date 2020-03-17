@@ -37,4 +37,8 @@ class LeafNeighborAccess {
     fun setRight(right: LeafNode<*, *>) {
         onRight = right
     }
+
+    fun getRight(): LeafNode<*, *>? {
+        return onRight
+    }
 }

@@ -11,7 +11,6 @@ class BPlusTreeMap<Key : Comparable<Key>, Value> {
     }
 
     fun getRange(start: Key, endInclusive: Key): List<Entry<Key, Value>> {
-        TODO("do lock order queue first")
         readWriteLock.lockRead()
         return rootNode.getRange(start, endInclusive, releaseAncestor = { readWriteLock.unlockRead() })
     }
