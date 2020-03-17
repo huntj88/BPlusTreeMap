@@ -3,13 +3,13 @@ package me.jameshunt.bplustree
 import me.jameshunt.bplustree.BPlusTreeMap.Entry
 
 class LeafNode<Key : Comparable<Key>, Value>(
-    private val leftLink2: LeafNeighborAccess,
-    private val rightLink2: LeafNeighborAccess
+    val leftLink: LeafNeighborAccess,
+    val rightLink: LeafNeighborAccess
 ) : Node<Key, Value> {
 
     init {
-        leftLink2.setRight(this)
-        rightLink2.setLeft(this)
+        leftLink.setRight(this)
+        rightLink.setLeft(this)
     }
 
     override val rwLock: ReadWriteLock = ReadWriteLock()
@@ -74,27 +74,36 @@ class LeafNode<Key : Comparable<Key>, Value>(
             true -> {
                 releaseAncestors()
                 putInNodeWithEmptySpace(entry).also {
-                    leftLink2.unlockLeftWrite()
+                    leftLink.unlockLeftWrite()
                     rwLock.unlockWrite()
-                    rightLink2.unlockRightWrite()
+                    rightLink.unlockRightWrite()
+
+                    leftLink.access.unlock()
+                    rightLink.access.unlock()
                 }
             }
             false -> {
                 splitLeaf(entry).also {
-                    leftLink2.unlockLeftWrite()
-                    rightLink2.unlockRightWrite()
+                    leftLink.unlockLeftWrite()
+                    rightLink.unlockRightWrite()
+
+                    leftLink.access.unlock()
+                    rightLink.access.unlock()
                 }
             }
         }
     }
 
     fun lockLeafWrite() {
-        leftLink2.access.lock()
-        rightLink2.access.lock()
 
-        leftLink2.lockLeftWrite()
+//        println("$this: attempting to lock links")
+        leftLink.access.lock()
+        rightLink.access.lock()
+//        println("$this: LOCKED links")
+
+        leftLink.lockLeftWrite()
         this.rwLock.lockWrite()
-        rightLink2.lockRightWrite()
+        rightLink.lockRightWrite()
     }
 
     private fun splitLeaf(newEntry: Entry<Key, Value>): PutResponse.NodeFull<Key, Value> {
@@ -106,13 +115,13 @@ class LeafNode<Key : Comparable<Key>, Value>(
 
         val newMiddleLink = LeafNeighborAccess()
 
-        val left = LeafNode<Key, Value>(leftLink2, newMiddleLink).also { node ->
+        val left = LeafNode<Key, Value>(leftLink, newMiddleLink).also { node ->
             (0 until numEntriesPerNode / 2).forEach {
                 node.entries[it] = sorted[it]
             }
         }
 
-        val right = LeafNode<Key, Value>(newMiddleLink, rightLink2).also { node ->
+        val right = LeafNode<Key, Value>(newMiddleLink, rightLink).also { node ->
             (numEntriesPerNode / 2 until sorted.size).forEachIndexed { newNodeIndex, i ->
                 node.entries[newNodeIndex] = sorted[i]
             }
