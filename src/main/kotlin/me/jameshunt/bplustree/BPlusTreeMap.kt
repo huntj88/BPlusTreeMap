@@ -2,6 +2,10 @@ package me.jameshunt.bplustree
 
 class BPlusTreeMap<Key : Comparable<Key>, Value> {
 
+    companion object {
+        const val debugOutputEnabled = false
+    }
+
     private val readWriteLock = ReadWriteLock()
     private var rootNode: Node<Key, Value> = LeafNode(LeafNeighborAccess(), LeafNeighborAccess())
 
@@ -43,5 +47,11 @@ class BPlusTreeMap<Key : Comparable<Key>, Value> {
         override fun compareTo(other: Entry<Key, Value>): Int {
             return key.compareTo(other.key)
         }
+    }
+}
+
+fun Any.log(message: String) {
+    if(BPlusTreeMap.debugOutputEnabled) {
+        println("$this: ${Thread.currentThread()}\n$message\n")
     }
 }

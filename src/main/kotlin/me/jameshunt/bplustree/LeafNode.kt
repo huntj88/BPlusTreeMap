@@ -47,8 +47,8 @@ class LeafNode<Key : Comparable<Key>, Value>(
         releaseAncestor: () -> Unit
     ) {
         var next = this as LeafNode<Key, Value>?
-        next!!.leftLink.access.lock()
-        next.rightLink.access.lock()
+        next!!.leftLink.lock()
+        next.rightLink.lock()
         next.rwLock.lockRead()
         releaseAncestor()
 
@@ -70,7 +70,7 @@ class LeafNode<Key : Comparable<Key>, Value>(
 
             val nextRightLink = next.rightLink.getRight()?.also {
                 assert(it.leftLink.access.isLocked)
-                it.rightLink.access.lock()
+                it.rightLink.lock()
                 it.rwLock.lockRead()
             }
             next.rwLock.unlockRead()
@@ -111,14 +111,19 @@ class LeafNode<Key : Comparable<Key>, Value>(
 
     fun lockLeafWrite() {
 
-//        println("$this: attempting to lock links")
-        leftLink.access.lock()
-        rightLink.access.lock()
-//        println("$this: LOCKED links")
+        log("attempting to lock left link")
+        leftLink.lock()
+        log("attempting to lock right link")
+        rightLink.lock()
+        log("LOCKED links")
 
+        log("attempting to lock left")
         leftLink.lockLeftWrite()
+        log("attempting to lock middle")
         this.rwLock.lockWrite()
+        log("attempting to lock right")
         rightLink.lockRightWrite()
+        log("locked write locks")
     }
 
     private fun splitLeaf(newEntry: Entry<Key, Value>): PutResponse.NodeFull<Key, Value> {
