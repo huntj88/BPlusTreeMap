@@ -1,5 +1,6 @@
 package me.jameshunt.bplustree
 
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.locks.ReentrantLock
 
 class LeafNeighborAccess {
@@ -9,24 +10,24 @@ class LeafNeighborAccess {
     private var onRight: LeafNode<*, *>? = null
 
     fun lockLeftWrite() {
-//        println("locking left $this, with thread: ${Thread.currentThread()}")
+        log("locking left $onLeft")
         onLeft?.rwLock?.lockWrite()
-//        println("LOCKED left $this, with thread: ${Thread.currentThread()}")
+        log("LOCKED left $onLeft")
     }
 
     fun lockRightWrite() {
-//        println("locking right $this, with thread: ${Thread.currentThread()}")
+        log("locking right $onRight")
         onRight?.rwLock?.lockWrite()
-//        println("LOCKED right $this, with thread: ${Thread.currentThread()}")
+        log("LOCKED left $onRight")
     }
 
     fun unlockLeftWrite() {
-//        println("unlocking left $this, with thread: ${Thread.currentThread()}")
+        log("unlocking left $onLeft")
         onLeft?.rwLock?.unlockWrite()
     }
 
     fun unlockRightWrite() {
-//        println("unlocking right $this, with thread: ${Thread.currentThread()}")
+        log("unlocking right $onRight")
         onRight?.rwLock?.unlockWrite()
     }
 
@@ -40,5 +41,23 @@ class LeafNeighborAccess {
 
     fun getRight(): LeafNode<*, *>? {
         return onRight
+    }
+
+    fun lock() {
+        access.lockOrFail()
+    }
+
+    private fun ReentrantLock.lockOrFail() {
+        if (!this.tryLock(2, TimeUnit.SECONDS)) {
+            val message = """
+                Deadlock
+                isLocked:       ${this.isLocked}
+                leaf link:      ${this@LeafNeighborAccess}
+                left:           $onLeft
+                right:          $onRight
+            """.trimIndent()
+
+            throw IllegalStateException(message)
+        }
     }
 }

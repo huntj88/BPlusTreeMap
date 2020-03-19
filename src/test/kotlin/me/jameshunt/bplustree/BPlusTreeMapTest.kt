@@ -118,97 +118,84 @@ class BPlusTreeMapTest {
         assertEquals(2000, fullRange[2000].value)
     }
 
-//    companion object {
-//        lateinit var bTree: BPlusTreeMap<Int, Int>
-//
-//        @BeforeClass
-//        @JvmStatic
-//        fun setup() {
-//            val random = Random(1)
-//            bTree = BPlusTreeMap<Int, Int>().apply {
-//                (0..1_000_000).sortedBy { random.nextInt() }.forEach { put(it, it * 2) }
-//            }
-//        }
-//    }
+    companion object {
+        lateinit var bTree: BPlusTreeMap<Int, Int>
 
-//    companion object {
-//        lateinit var bTree: BPlusTreeMap<Int, Int>
-//
-//        @BeforeClass
-//        @JvmStatic
-//        fun setup() {
-//            val random = Random(1)
-//            bTree = BPlusTreeMap<Int, Int>().apply {
-//                (0..1_000_000).sortedBy { random.nextInt() }.forEach { put(it, it * 2) }
-//            }
-//        }
-//    }
-//
-//    @Test
-//    fun `get 6 values from 1Million, and range of 500 out of 1Million`() {
-//        bTree.get(4343) ?: throw IllegalStateException()
-//        bTree.get(234233) ?: throw IllegalStateException()
-//        bTree.get(577432) ?: throw IllegalStateException()
-//        bTree.get(468743) ?: throw IllegalStateException()
-//        bTree.get(936743) ?: throw IllegalStateException()
-//        bTree.get(1_000_001)?.let { throw IllegalStateException("should be null") }
-//
-//        val range = bTree.getRange(10000, 10500)
-//        println(range.take(200))
-//        if (501 != range.size) {
-//            throw IllegalStateException()
-//        }
-//    }
-//
-//    @Test
-//    fun `get couple hundred thousand concurrently`() {
-//        val latch = CountDownLatch(8)
-//        thread {
-//            bTree.get(4343) ?: throw IllegalStateException()
-//            latch.countDown()
-//        }
-//        thread {
-//            bTree.get(4343) ?: throw IllegalStateException()
-//            latch.countDown()
-//        }
-//        thread {
-//            bTree.get(234233) ?: throw IllegalStateException()
-//            latch.countDown()
-//        }
-//        thread {
-//            bTree.get(577432) ?: throw IllegalStateException()
-//            latch.countDown()
-//        }
-//        thread {
-//            bTree.get(468743) ?: throw IllegalStateException()
-//            latch.countDown()
-//        }
-//        thread {
-//            bTree.get(936743) ?: throw IllegalStateException()
-//            latch.countDown()
-//        }
-//        thread {
-//            (0..200_000 step 3).forEach {
-//                bTree.get(it) ?: throw IllegalStateException()
-//            }
-//            latch.countDown()
-//        }
-//        thread {
-//            (0..200_000 step 2).forEach {
-//                bTree.get(it) ?: throw IllegalStateException()
-//            }
-//            latch.countDown()
-//        }
-//        bTree.get(1_000_001)?.let { throw IllegalStateException("should be null") }
-//
-//        val range = bTree.getRange(10000, 10500)
-//        println(range.take(200))
-//        if (501 != range.size) {
-//            throw IllegalStateException()
-//        }
-//
-//        latch.awaitOrError()
-//    }
+        @BeforeClass
+        @JvmStatic
+        fun setup() {
+            val random = Random(1)
+            bTree = BPlusTreeMap<Int, Int>().apply {
+                (0..1_000_000).sortedBy { random.nextInt() }.forEach { put(it, it * 2) }
+            }
+        }
+    }
+
+    @Test
+    fun `get 6 values from 1Million, and range of 500 out of 1Million`() {
+        bTree.get(4343) ?: throw IllegalStateException()
+        bTree.get(234233) ?: throw IllegalStateException()
+        bTree.get(577432) ?: throw IllegalStateException()
+        bTree.get(468743) ?: throw IllegalStateException()
+        bTree.get(936743) ?: throw IllegalStateException()
+        bTree.get(1_000_001)?.let { throw IllegalStateException("should be null") }
+
+        val range = bTree.getRange(10000, 10500)
+        println(range.take(200))
+        if (501 != range.size) {
+            throw IllegalStateException()
+        }
+    }
+
+    @Test
+    fun `get couple hundred thousand concurrently`() {
+        val latch = CountDownLatch(8)
+        thread {
+            bTree.get(4343) ?: throw IllegalStateException()
+            latch.countDown()
+        }
+        thread {
+            bTree.get(4343) ?: throw IllegalStateException()
+            latch.countDown()
+        }
+        thread {
+            bTree.get(234233) ?: throw IllegalStateException()
+            latch.countDown()
+        }
+        thread {
+            bTree.get(577432) ?: throw IllegalStateException()
+            latch.countDown()
+        }
+        thread {
+            bTree.get(468743) ?: throw IllegalStateException()
+            latch.countDown()
+        }
+        thread {
+            bTree.get(936743) ?: throw IllegalStateException()
+            latch.countDown()
+        }
+        thread {
+            (0..200_000 step 3).forEach {
+                bTree.get(it) ?: throw IllegalStateException()
+            }
+            latch.countDown()
+        }
+        thread {
+            (0..200_000 step 2).forEach {
+                bTree.get(it) ?: throw IllegalStateException()
+            }
+            latch.countDown()
+        }
+        bTree.get(1_000_001)?.let { throw IllegalStateException("should be null") }
+
+        val range = bTree.getRange(10000, 10500)
+        println(range.take(200))
+        if (501 != range.size) {
+            throw IllegalStateException()
+        }
+
+        latch.awaitOrError()
+    }
 
     @Test
     fun insert1Million() {
@@ -228,9 +215,9 @@ class BPlusTreeMapTest {
 
         BPlusTreeMap<Int, Int>().apply {
             (0 until numThreads step 2).forEach {
-                (it - 1..100_000 step numThreads / 2).insertInOtherThread(this, latch)
-                (it..100_000 step numThreads).insertInOtherThread(this, latch)
-                (it + 1..100_000 step numThreads).reversed().insertInOtherThread(this, latch)
+                (it - 1..1_000_000 step numThreads / 2).insertInOtherThread(this, latch)
+                (it..1_000_000 step numThreads).insertInOtherThread(this, latch)
+                (it + 1..1_000_000 step numThreads).reversed().insertInOtherThread(this, latch)
             }
 
 
@@ -390,7 +377,7 @@ class BPlusTreeMapTest {
     }
 
     fun CountDownLatch.awaitOrError() {
-        if (!this.await(150, TimeUnit.SECONDS)) {
+        if (!this.await(250, TimeUnit.SECONDS)) {
             throw IllegalStateException("deadlock on countdown await. current count is: ${this.count}")
         }
     }
