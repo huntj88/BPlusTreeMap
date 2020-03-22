@@ -12,6 +12,8 @@ repositories {
 dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
     implementation 'junit:junit:4.12'
+
+    testImplementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.10.+"
 }
 
 compileKotlin {

@@ -3,7 +3,7 @@ package me.jameshunt.bplustree
 class BPlusTreeMap<Key : Comparable<Key>, Value> {
 
     companion object {
-        const val debugOutputEnabled = false
+        var loggingImpl: Logging? = null
     }
 
     private val readWriteLock = ReadWriteLock()
@@ -20,15 +20,17 @@ class BPlusTreeMap<Key : Comparable<Key>, Value> {
     }
 
     fun put(key: Key, value: Value) {
+        log("locking write at root")
         readWriteLock.lockWrite()
+        log("LOCKED write at root")
 
-        when(val rootNode = rootNode) {
+        when (val rootNode = rootNode) {
             is LeafNode -> rootNode.lockLeafWrite()
             is InternalNode -> rootNode.rwLock.lockWrite()
             else -> TODO()
         }
 
-        val releaseAncestors = { readWriteLock.unlockWrite() }
+        val releaseAncestors = { readWriteLock.unlockWrite().also { log("unlocked root") } }
         val putResponse = rootNode.put(Entry(key, value), releaseAncestors = releaseAncestors)
         if (putResponse is PutResponse.NodeFull<Key, Value>) {
             rootNode = InternalNode<Key, Value>().also {
@@ -36,7 +38,7 @@ class BPlusTreeMap<Key : Comparable<Key>, Value> {
                 it.children[0] = putResponse.left
                 it.children[1] = putResponse.right
             }
-            readWriteLock.unlockWrite()
+            readWriteLock.unlockWrite().also { log("unlocked root") }
         }
     }
 
@@ -51,7 +53,9 @@ class BPlusTreeMap<Key : Comparable<Key>, Value> {
 }
 
 fun Any.log(message: String) {
-    if(BPlusTreeMap.debugOutputEnabled) {
-        println("$this: ${Thread.currentThread()}\n$message\n")
-    }
+    BPlusTreeMap.loggingImpl?.log(this, message)
+}
+
+interface Logging {
+    fun log(caller: Any, message: String)
 }

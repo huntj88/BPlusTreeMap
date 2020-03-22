@@ -18,7 +18,7 @@ class LeafNeighborAccess {
     fun lockRightWrite() {
         log("locking right $onRight")
         onRight?.rwLock?.lockWrite()
-        log("LOCKED left $onRight")
+        log("LOCKED right $onRight")
     }
 
     fun unlockLeftWrite() {
