@@ -28,21 +28,24 @@ class InternalNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
         val possibleLocationIndex = childIndexLocationOfKey(entry.key)
         val childNode = children[possibleLocationIndex]!!
 
-        when(childNode) {
-            is LeafNode -> childNode.lockLeafWrite()
-            is InternalNode -> childNode.rwLock.lockWrite()
+        log("locking child: $childNode")
+        when (childNode) {
+            is LeafNode -> childNode.lockLeafWrite().also { log("LOCKED leaf child: $childNode") }
+            is InternalNode -> childNode.rwLock.lockWrite().also { log("LOCKED child: $childNode") }
             else -> TODO()
         }
 
         val ancestorsReleased = keys.last() == null
         if (ancestorsReleased) {
+            log("releasing write ancestors early")
             // will not split node, so safe to release ancestor lock
             releaseAncestors()
         }
 
         val releaseThisNodeAndAncestors: () -> Unit = {
+            log("unlocking write lock")
             rwLock.unlockWrite()
-            if(!ancestorsReleased) {
+            if (!ancestorsReleased) {
                 releaseAncestors()
             }
         }
@@ -50,7 +53,8 @@ class InternalNode<Key : Comparable<Key>, Value> : Node<Key, Value> {
         return when (val putResponse = childNode.put(entry, releaseThisNodeAndAncestors)) {
             is PutResponse.Success -> putResponse
             is PutResponse.NodeFull<Key, Value> -> insertPromoted(putResponse).also {
-                if(it is PutResponse.Success) {
+                if (it is PutResponse.Success) {
+                    log("inserted promoted, releasing write")
                     rwLock.unlockWrite()
                 }
             }
