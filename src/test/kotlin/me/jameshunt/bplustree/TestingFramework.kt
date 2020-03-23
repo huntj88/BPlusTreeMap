@@ -70,26 +70,8 @@ fun configureTest(block: TestWrapper.() -> Unit) {
     Thread.sleep(80)
     phaser.arriveAndAwaitAdvance()
 
-    val timeNow = Instant.now()
-
     if (wrapper.exceptions.isNotEmpty()) {
-        val logDirectory = File("src/test/logs").also { it.mkdir() }
-        BPlusTreeMap
-            .loggingImpl
-            .let { it as TestLogging }
-            .logs
-            .let(wrapper.mapper::writeValueAsString)
-            .let { File(logDirectory, "$timeNow-logs.txt").writeText(it) }
-
-        val exceptionFile = File(logDirectory, "$timeNow-exceptions.txt")
-        wrapper.exceptions.forEach {
-            exceptionFile.appendText("${it.time}\n")
-            exceptionFile.appendText("Exception in thread \"${it.thread}\" ${it.exception}\n")
-            it.exception.stackTrace.forEach { traceElement ->
-                exceptionFile.appendText("\tat $traceElement\n")
-            }
-            exceptionFile.appendText("\n")
-        }
+        wrapper.writeLogsToFile()
 
         assert(false) {
             println("Errors occurred, check log files")
@@ -97,7 +79,29 @@ fun configureTest(block: TestWrapper.() -> Unit) {
     }
 }
 
-class TestWrapper(val phaser: Phaser) {
+fun TestWrapper.writeLogsToFile() {
+    val timeNow = Instant.now()
+
+    val logDirectory = File("src/test/logs").also { it.mkdir() }
+    BPlusTreeMap
+        .loggingImpl
+        .let { it as TestLogging }
+        .let { it.logsLeadingUpToException + it.logsAfterException }
+        .let(this.mapper::writeValueAsString)
+        .let { File(logDirectory, "$timeNow-logs.json").writeText(it) }
+
+    val exceptionFile = File(logDirectory, "$timeNow-exceptions.txt")
+    this.exceptions.forEach {
+        exceptionFile.appendText("${it.time}\n")
+        exceptionFile.appendText("Exception in thread \"${it.thread}\" ${it.exception}\n")
+        it.exception.stackTrace.forEach { traceElement ->
+            exceptionFile.appendText("\tat $traceElement\n")
+        }
+        exceptionFile.appendText("\n")
+    }
+}
+
+class TestWrapper(private val phaser: Phaser) {
     val exceptions: MutableList<ExceptionData> = mutableListOf()
 
     private val instantModule = SimpleModule().apply {
@@ -124,12 +128,9 @@ class TestWrapper(val phaser: Phaser) {
             try {
                 block()
             } catch (e: Exception) {
+                BPlusTreeMap.loggingImpl.let { it as TestLogging }.exceptionDetected = true
                 synchronized(exceptions) {
-                    exceptions.add(ExceptionData(
-                        time = Instant.now(),
-                        thread = Thread.currentThread().toString(),
-                        exception = e
-                    ))
+                    exceptions.add(ExceptionData(exception = e))
                 }
                 throw e
             } finally {
@@ -139,30 +140,53 @@ class TestWrapper(val phaser: Phaser) {
     }
 
     data class ExceptionData(
-        val time: Instant,
-        val thread: String,
+        val time: Instant = Instant.now(),
+        val thread: String = Thread.currentThread().toString(),
         val exception: Exception
     )
 }
 
 class TestLogging : Logging {
-    val logs: Queue<LogData> = LimitedQueue<LogData>(200)
+    @Volatile
+    var exceptionDetected = false
+    val logsLeadingUpToException: Queue<LogData> = LimitedQueue<LogData>(2000)
+    val logsAfterException = mutableListOf<LogData>()
 
     override fun log(caller: Any, message: String) {
-        synchronized(logs) {
-            logs.add(LogData(
-                time = Instant.now(),
-                caller = caller.toString(),
-                thread = Thread.currentThread().toString(),
-                message = message
-            ))
+        when (exceptionDetected) {
+            true -> synchronized(logsAfterException) {
+                if (logsAfterException.isEmpty()) {
+                    logsAfterException.add(
+                        LogData(
+                            caller = this.toString(),
+                            message = "SEPARATOR between logs before and after exception"
+                        )
+                    )
+                }
+                if (logsAfterException.size < 1000) {
+                    logsAfterException.add(
+                        LogData(
+                            caller = caller.toString(),
+                            message = message
+                        )
+                    )
+                }
+            }
+            false -> synchronized(logsLeadingUpToException) {
+                logsLeadingUpToException.add(
+                    LogData(
+                        caller = caller.toString(),
+                        message = message
+                    )
+                )
+            }
         }
     }
 
     data class LogData(
-        val time: Instant,
+        val time: Instant = Instant.now(),
         val caller: String,
-        val thread: String,
+        val thread: String = Thread.currentThread().toString(),
         val message: String
     )
 }
@@ -174,41 +198,5 @@ class LimitedQueue<E>(private val limit: Int) : LinkedList<E>() {
             super.remove()
         }
         return true
-    }
-}
-
-class Blah {
-    @Test
-    fun blahss() {
-        configureTest {
-            threadWithLogging {
-                println("wow0")
-            }
-
-            threadWithLogging {
-                println("wow1")
-            }
-
-            threadWithLogging {
-                println("wow2")
-            }
-
-            threadWithLogging {
-                println("wow3")
-            }
-
-            threadWithLogging {
-                println("wow4")
-            }
-
-            threadWithLogging {
-                println("wow5")
-                throw IllegalStateException()
-            }
-
-            threadWithLogging {
-                println("wow6")
-            }
-        }
     }
 }

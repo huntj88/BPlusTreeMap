@@ -48,7 +48,7 @@ class LeafNeighborAccess {
     }
 
     private fun ReentrantLock.lockOrFail() {
-        if (!this.tryLock(2, TimeUnit.SECONDS)) {
+        if (!this.tryLock(6, TimeUnit.SECONDS)) {
             val message = """
                 Deadlock
                 isLocked:       ${this.isLocked}
