@@ -68,7 +68,7 @@ class ReadWriteLock {
     }
 
     private fun Semaphore.acquireOrError(numPermits: Int = 1) {
-        if (!this.tryAcquire(numPermits, 2, TimeUnit.SECONDS)) {
+        if (!this.tryAcquire(numPermits, 6, TimeUnit.SECONDS)) {
             synchronized(isFinalized) {
                 if (isFinalized) throw IllegalStateException("Trying to access finalized lock")
             }

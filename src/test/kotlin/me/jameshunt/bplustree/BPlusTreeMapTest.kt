@@ -11,55 +11,6 @@ import kotlin.random.Random
 class BPlusTreeMapTest {
 
     @Test
-    fun test() {
-        val tree = BPlusTreeMap<Int, Int>()
-        tree.put(1, 1)
-        tree.put(2, 2)
-        println(tree.get(1))
-        println(tree.get(2))
-        tree.put(3, 3)
-        tree.put(4, 4)
-        tree.put(5, 5)
-        tree.put(6, 6)
-        tree.put(7, 7)
-        println(tree.get(6))
-    }
-
-    @Test
-    fun moreSplittingOfNodes() {
-        val tree = BPlusTreeMap<Int, Int>()
-        tree.put(1, 1)
-        tree.put(2, 2)
-//        println(tree.get(1))
-//        println(tree.get(2))
-        tree.put(3, 3)
-        tree.put(0, 0)
-        tree.put(4, 4)
-//        println(tree.get(3))
-//        println(tree.get(0))
-//        println(tree.get(4))
-
-        tree.put(5, 5)
-        tree.put(7, 7)
-        tree.put(8, 8)
-        tree.put(9, 9)
-        tree.put(10, 10)
-//        println(tree.get(5))
-//
-//
-//        println(tree.get(1))
-//        println(tree.get(2))
-//        println(tree.get(3))
-//        println(tree.get(0))
-//        println(tree.get(4))
-        (0..15).forEach {
-            println(tree.get(it))
-        }
-
-        tree.getRange(1, 15).map { it.key }.let(::println)
-    }
-
-    @Test
     fun testGetRange() {
         val tree = BPlusTreeMap<Int, Int>()
         tree.put(1, 1)
@@ -124,6 +75,7 @@ class BPlusTreeMapTest {
         @BeforeClass
         @JvmStatic
         fun setup() {
+            BPlusTreeMap.loggingImpl = null
             val random = Random(1)
             bTree = BPlusTreeMap<Int, Int>().apply {
                 (0..1_000_000).sortedBy { random.nextInt() }.forEach { put(it, it * 2) }
@@ -377,7 +329,7 @@ class BPlusTreeMapTest {
     }
 
     fun CountDownLatch.awaitOrError() {
-        if (!this.await(250, TimeUnit.SECONDS)) {
+        if (!this.await(1000, TimeUnit.SECONDS)) {
             throw IllegalStateException("deadlock on countdown await. current count is: ${this.count}")
         }
     }
