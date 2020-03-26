@@ -1,10 +1,7 @@
 package me.jameshunt.bplustree
 
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.locks.ReentrantLock
-
 class LeafNeighborAccess {
-    val access = ReentrantLock(true)
+    val rwLock = ReadWriteLock()
 
     private var onLeft: LeafNode<*, *>? = null
     private var onRight: LeafNode<*, *>? = null
@@ -41,23 +38,5 @@ class LeafNeighborAccess {
 
     fun getRight(): LeafNode<*, *>? {
         return onRight
-    }
-
-    fun lock() {
-        access.lockOrFail()
-    }
-
-    private fun ReentrantLock.lockOrFail() {
-        if (!this.tryLock(6, TimeUnit.SECONDS)) {
-            val message = """
-                Deadlock
-                isLocked:       ${this.isLocked}
-                leaf link:      ${this@LeafNeighborAccess}
-                left:           $onLeft
-                right:          $onRight
-            """.trimIndent()
-
-            throw IllegalStateException(message)
-        }
     }
 }

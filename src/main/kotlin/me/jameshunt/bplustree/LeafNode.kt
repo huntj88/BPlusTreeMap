@@ -3,8 +3,8 @@ package me.jameshunt.bplustree
 import me.jameshunt.bplustree.BPlusTreeMap.Entry
 
 class LeafNode<Key : Comparable<Key>, Value>(
-    val leftLink: LeafNeighborAccess,
-    val rightLink: LeafNeighborAccess
+    private val leftLink: LeafNeighborAccess,
+    private val rightLink: LeafNeighborAccess
 ) : Node<Key, Value> {
 
     init {
@@ -47,8 +47,8 @@ class LeafNode<Key : Comparable<Key>, Value>(
         releaseAncestor: () -> Unit
     ) {
         var next = this as LeafNode<Key, Value>?
-        next!!.leftLink.lock()
-        next.rightLink.lock()
+        next!!.leftLink.rwLock.lockRead()
+        next.rightLink.rwLock.lockRead()
         next.rwLock.lockRead()
         releaseAncestor()
 
@@ -60,8 +60,8 @@ class LeafNode<Key : Comparable<Key>, Value>(
                         false -> if (collector.isEmpty()) Unit else {
                             next!!.rwLock.unlockRead()
 
-                            next!!.leftLink.access.unlock()
-                            next!!.rightLink.access.unlock()
+                            next!!.leftLink.rwLock.unlockRead()
+                            next!!.rightLink.rwLock.unlockRead()
                             return
                         }
                     }
@@ -69,15 +69,15 @@ class LeafNode<Key : Comparable<Key>, Value>(
             }
 
             val nextRightLink = next.rightLink.getRight()?.also {
-                assert(it.leftLink.access.isLocked)
-                it.rightLink.lock()
+                assert(it.leftLink.rwLock.isReadLocked())
+                it.rightLink.rwLock.lockRead()
                 it.rwLock.lockRead()
             }
             next.rwLock.unlockRead()
-            next.leftLink.access.unlock()
+            next.leftLink.rwLock.unlockRead()
 
             if(nextRightLink == null) {
-                next.rightLink.access.unlock()
+                next.rightLink.rwLock.unlockRead()
             }
 
             next = nextRightLink as LeafNode<Key, Value>?
@@ -93,8 +93,8 @@ class LeafNode<Key : Comparable<Key>, Value>(
                     rwLock.unlockWrite()
                     rightLink.unlockRightWrite()
 
-                    leftLink.access.unlock()
-                    rightLink.access.unlock()
+                    leftLink.rwLock.unlockWrite()
+                    rightLink.rwLock.unlockWrite()
                 }
             }
             false -> {
@@ -102,8 +102,8 @@ class LeafNode<Key : Comparable<Key>, Value>(
                     leftLink.unlockLeftWrite()
                     rightLink.unlockRightWrite()
 
-                    leftLink.access.unlock()
-                    rightLink.access.unlock()
+                    leftLink.rwLock.unlockWrite()
+                    rightLink.rwLock.unlockWrite()
                 }
             }
         }
@@ -112,9 +112,9 @@ class LeafNode<Key : Comparable<Key>, Value>(
     fun lockLeafWrite() {
 
         log("attempting to lock left link")
-        leftLink.lock()
+        leftLink.rwLock.lockWrite()
         log("attempting to lock right link")
-        rightLink.lock()
+        rightLink.rwLock.lockWrite()
         log("LOCKED links")
 
         log("attempting to lock left")
